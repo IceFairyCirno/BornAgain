@@ -10,6 +10,12 @@ Functions are 60% Vibe-Coded, Layouts are 5% Vibe-Coded.
 
 0 cybersecurity, I don't think someone will be interested in my body weight.
 
+## How to use
+
+> Updated 15/8/2025
+> 
+Download the app-release.apk and install it on your Android device.
+
 ## Author
 Ling Chun Ho Dicky
 
