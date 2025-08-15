@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".Progress"
+    android:paddingHorizontal="16sp">
+
+    <TextView
+        android:id="@+id/ProgressText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Progress"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="48sp"/>
+
+    <ImageButton
+        android:id="@+id/ReturnHomeButton"
+        android:layout_width="30dp"
+        android:layout_height="30sp"
+        android:src="@drawable/leftarrow"
+        android:background="@drawable/bluebutton"
+        app:layout_constraintTop_toTopOf="@id/ProgressText"
+        android:layout_marginStart="16sp"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/ProgressText"
+        app:layout_constraintStart_toStartOf="parent"
+        android:text="Weight Change"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginTop="16sp"/>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/WeightRecordContainer"
+        android:layout_width="match_parent"
+        android:layout_height="250dp"
+        android:layout_weight="1"
+        android:padding="2sp"
+        app:layout_constraintTop_toBottomOf="@id/ProgressText"
+        android:layout_marginTop="60sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:cardCornerRadius="16sp">
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/Chart"
+            android:layout_width="match_parent"
+            android:layout_height="230sp"
+            android:layout_marginHorizontal="10sp"
+            android:layout_weight="1"
+            app:layout_constraintTop_toBottomOf="@+id/ProgressText"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_gravity="center"/>
+    </androidx.cardview.widget.CardView>
+
+    <TextView
+        android:id="@+id/WeightLiftedText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/WeightRecordContainer"
+        app:layout_constraintStart_toStartOf="parent"
+        android:text="Weight Lifted"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginTop="16sp"/>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/WeightLiftedContainer"
+        android:layout_width="match_parent"
+        android:layout_height="250dp"
+        app:layout_constraintTop_toBottomOf="@id/WeightLiftedText"
+        app:cardCornerRadius="16sp"
+        android:layout_marginTop="16sp">
+        <com.github.mikephil.charting.charts.BarChart
+            android:id="@+id/Chart2"
+            android:layout_width="match_parent"
+            android:layout_height="230sp"
+            android:layout_marginHorizontal="10sp"
+            android:layout_weight="1"
+            app:layout_constraintTop_toBottomOf="@+id/ProgressText"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_gravity="center"/>
+    </androidx.cardview.widget.CardView>
+
+
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
