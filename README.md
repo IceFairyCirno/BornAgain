@@ -10,6 +10,6 @@ Functions are 60% Vibe-Coded, Layouts are 5% Vibe-Coded.
 
 0 cybersecurity, and I don't think someone will be interested in my body weight
 
-### Author
+## Author
 Dicky Ling
 
