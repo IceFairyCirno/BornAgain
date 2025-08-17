@@ -26,6 +26,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.QRCodeScanner">
         <activity
+            android:name=".SystemConfig"
+            android:exported="false" />
+        <activity
             android:name=".Progress"
             android:exported="false" />
         <activity

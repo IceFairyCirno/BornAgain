@@ -18,6 +18,16 @@
         android:textSize="24sp"
         android:textStyle="bold"
         android:layout_marginTop="48sp"/>
+    <ImageButton
+        android:id="@+id/ReturnHomeButton"
+        android:layout_width="30dp"
+        android:layout_height="30sp"
+        android:src="@drawable/leftarrow"
+        android:background="@drawable/bluebutton"
+        app:layout_constraintTop_toTopOf="@id/ChooseText"
+        app:layout_constraintBottom_toBottomOf="@id/ChooseText"
+        android:layout_marginStart="16sp"
+        app:layout_constraintStart_toStartOf="parent"/>
     <GridLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -32,20 +42,20 @@
             android:layout_margin="10sp"
             app:cardCornerRadius="15sp">
             <ImageButton
-                android:id="@+id/ArmCurlBar"
+                android:id="@+id/Sub1Image"
                 android:layout_width="175dp"
                 android:layout_height="175dp"
-                android:src="@drawable/armcurlbar"
                 android:padding="0sp"
                 android:scaleType="fitCenter"
                 app:layout_constraintTop_toBottomOf="@id/ChooseText"
                 app:layout_constraintStart_toStartOf="parent"/>
             <TextView
+                android:id="@+id/Sub1Text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textStyle="bold"
                 android:textSize="18sp"
-                android:text="Arm Curl Bar"
+                android:text="Sample Machine"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="190sp"/>
         </androidx.cardview.widget.CardView>
@@ -53,20 +63,20 @@
             android:layout_margin="10sp"
             app:cardCornerRadius="15sp">
             <ImageButton
-                android:id="@+id/PullDown"
+                android:id="@+id/Sub2Image"
                 android:layout_width="175dp"
                 android:layout_height="175dp"
-                android:src="@drawable/pulldown"
                 android:padding="0sp"
                 android:scaleType="fitCenter"
-                app:layout_constraintTop_toTopOf="@id/ArmCurlBar"
-                app:layout_constraintStart_toEndOf="@id/ArmCurlBar" />
+                app:layout_constraintTop_toTopOf="@id/Sub1Image"
+                app:layout_constraintStart_toEndOf="@id/Sub1Image" />
             <TextView
+                android:id="@+id/Sub2Text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textStyle="bold"
                 android:textSize="18sp"
-                android:text="Pull Down"
+                android:text="Sample Machine"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="190sp"/>
         </androidx.cardview.widget.CardView>
@@ -74,20 +84,20 @@
             android:layout_margin="10sp"
             app:cardCornerRadius="15sp">
             <ImageButton
-                android:id="@+id/PushDown"
+                android:id="@+id/Sub3Image"
                 android:layout_width="175dp"
                 android:layout_height="175dp"
-                android:src="@drawable/pushdown"
                 android:padding="0sp"
                 android:scaleType="fitCenter"
-                app:layout_constraintTop_toBottomOf="@id/ArmCurlBar"
-                app:layout_constraintStart_toStartOf="@id/ArmCurlBar"/>
+                app:layout_constraintTop_toBottomOf="@id/Sub1Image"
+                app:layout_constraintStart_toStartOf="@id/Sub1Image"/>
             <TextView
+                android:id="@+id/Sub3Text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textStyle="bold"
                 android:textSize="18sp"
-                android:text="Push Down"
+                android:text="Sample Machine"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="190sp"/>
         </androidx.cardview.widget.CardView>
@@ -95,23 +105,24 @@
             android:layout_margin="10sp"
             app:cardCornerRadius="15sp">
             <ImageButton
-                android:id="@+id/RowWithExtensionTriangle"
+                android:id="@+id/Sub4Image"
                 android:layout_width="175dp"
                 android:layout_height="175dp"
-                android:src="@drawable/rowwithbackextensiontriangle"
                 android:padding="0sp"
                 android:scaleType="fitCenter"
-                app:layout_constraintTop_toBottomOf="@id/ArmCurlBar"
-                app:layout_constraintStart_toEndOf="@id/ArmCurlBar" />
+                app:layout_constraintTop_toBottomOf="@id/Sub1Image"
+                app:layout_constraintStart_toEndOf="@id/Sub1Image" />
             <TextView
+                android:id="@+id/Sub4Text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textStyle="bold"
                 android:textSize="18sp"
-                android:text="Row With Extension"
+                android:text="Sample Machine"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="190sp"/>
         </androidx.cardview.widget.CardView>
+
     </GridLayout>
 
 

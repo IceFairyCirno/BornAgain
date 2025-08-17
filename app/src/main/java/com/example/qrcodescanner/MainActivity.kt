@@ -118,8 +118,10 @@ class MainActivity : AppCompatActivity() {
             if ("gym" in result.contents){
                 val exerciseName = (result.contents).split("/").last()
                 val intent: Intent
-                if ("cable" in result.contents){
-                    intent = Intent(this, SubMachines::class.java)
+                if ("cable" in result.contents || "multi" in result.contents){
+                    intent = Intent(this, SubMachines::class.java).apply{
+                        putExtra("machineName", exerciseName)
+                    }
                 } else{
                     intent = Intent(this, MainActivity2::class.java).apply{
                         putExtra("exerciseName", exerciseName)
