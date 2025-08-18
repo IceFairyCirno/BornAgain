@@ -249,7 +249,7 @@
                     android:id="@+id/Card1Name"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Sample Machine"
+                    android:text="Sample Machine1"
                     android:textSize="20sp">
                 </TextView>
                 <TextView
@@ -306,7 +306,7 @@
                     android:id="@+id/Card2Name"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Sample Machine"
+                    android:text="Sample Machine2"
                     android:textSize="20sp">
                 </TextView>
                 <TextView
@@ -363,7 +363,7 @@
                     android:id="@+id/Card3Name"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Sample Machine"
+                    android:text="Sample Machine3"
                     android:textSize="20sp">
                 </TextView>
                 <TextView
