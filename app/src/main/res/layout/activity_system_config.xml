@@ -5,6 +5,113 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".SystemConfig">
+    tools:context=".SystemConfig"
+    android:layout_marginHorizontal="16sp">
+    <TextView
+        android:id="@+id/SettingText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="48sp"
+        android:text="Setting"
+        android:textSize="24sp"
+        android:textStyle="bold"/>
+
+    <ImageButton
+        android:id="@+id/ReturnHomeButton"
+        android:layout_width="30dp"
+        android:layout_height="30sp"
+        android:src="@drawable/leftarrow"
+        android:background="@drawable/bluebutton"
+        app:layout_constraintTop_toTopOf="@id/SettingText"
+        app:layout_constraintBottom_toBottomOf="@id/SettingText"
+        android:layout_marginStart="16sp"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <TableLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/SettingText"
+        android:layout_marginTop="40sp"
+        android:layout_marginHorizontal="16sp">
+        <TableRow>
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="Rest Time"
+                android:textSize="20sp"
+                android:layout_weight="1.8"/>
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_weight="1">
+                <ImageButton
+                    android:id="@+id/DecreaseRestTimeButton"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:contentDescription="Decrease"
+                    android:src="@drawable/minus"
+                    android:background="@drawable/greybutton_bg"/>
+                <TextView
+                    android:id="@+id/SettingRestTime"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="1 min"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:textSize="20sp"/>
+                <ImageButton
+                    android:id="@+id/IncreaseRestTimeButton"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:contentDescription="Increase"
+                    android:src="@drawable/add"
+                    android:background="@drawable/greybutton_bg"/>
+            </LinearLayout>
+        </TableRow>
+        <TableRow
+            android:layout_marginTop="32sp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="Total Set"
+                android:textSize="20sp"
+                android:layout_weight="1.8"/>
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_weight="1">
+                <ImageButton
+                    android:id="@+id/DecreaseTotalSetButton"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:contentDescription="Decrease"
+                    android:src="@drawable/minus"
+                    android:background="@drawable/greybutton_bg"/>
+                <TextView
+                    android:id="@+id/SettingTotalSet"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="4 Sets"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:textSize="20sp"/>
+                <ImageButton
+                    android:id="@+id/IncreaseTotalSetButton"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:contentDescription="Increase"
+                    android:src="@drawable/add"
+                    android:background="@drawable/greybutton_bg"/>
+            </LinearLayout>
+        </TableRow>
+    </TableLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

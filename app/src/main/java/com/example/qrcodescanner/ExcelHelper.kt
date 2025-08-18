@@ -2,6 +2,7 @@ package com.example.qrcodescanner
 
 import android.content.Context
 import org.apache.poi.ss.usermodel.WorkbookFactory
+import org.apache.poi.ss.util.CellReference
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
 import java.io.FileInputStream
@@ -68,38 +69,74 @@ class ExcelHelper {
             }
         }
     }
-    fun searchExcel(context: Context, fileName: String, columnIndex: Int, searchValue: String): List<List<String>> {
-        val file = File(context.filesDir, fileName)
-        if (!file.exists()) {
-            println("File does not exist: ${file.absolutePath}")
-            return emptyList()
-        }
-
-        val workbook = try {
-            WorkbookFactory.create(file)
-        } catch (e: IOException) {
-            println("Error opening Excel file: ${e.message}")
-            return emptyList()
-        }
-
-        val sheet = workbook.getSheetAt(0)
-        val result = mutableListOf<List<String>>()
+    fun modifyExcelCells(context: Context, cellRef1: String, newValue1: String, cellRef2: String, newValue2: String){
         try {
-            for (row in sheet) {
-                val cell = row.getCell(columnIndex, org.apache.poi.ss.usermodel.Row.MissingCellPolicy.CREATE_NULL_AS_BLANK)
-                if (cell.toString() == searchValue) {
-                    val rowData = mutableListOf<String>()
-                    row.forEach { rowData.add(it.toString()) }
-                    result.add(rowData)
-                }
+            val ref1 = CellReference(cellRef1)
+            val ref2 = CellReference(cellRef2)
+            val row1 = ref1.row
+            val col1 = ref1.col.toInt()
+            val row2 = ref2.row
+            val col2 = ref2.col.toInt()
+
+            val file = File(context.filesDir, "record.xlsx")
+            if (!file.exists()) {
+                throw Exception("record.xlsx not found in internal storage")
             }
-            println("Search completed in: ${file.absolutePath}")
-            return result
+
+            FileInputStream(file).use { inputStream ->
+                val workbook = XSSFWorkbook(inputStream)
+                val sheet = workbook.getSheet("Sheet3")
+                    ?: throw Exception("Sheet3 not found in record.xlsx")
+
+                val cell1 = sheet.getRow(row1)?.getCell(col1, org.apache.poi.ss.usermodel.Row.MissingCellPolicy.CREATE_NULL_AS_BLANK)
+                val cell2 = sheet.getRow(row2)?.getCell(col2, org.apache.poi.ss.usermodel.Row.MissingCellPolicy.CREATE_NULL_AS_BLANK)
+                cell1?.setCellValue(newValue1)
+                cell2?.setCellValue(newValue2)
+
+                FileOutputStream(file).use { outputStream ->
+                    workbook.write(outputStream)
+                }
+
+                workbook.close()
+
+            }
         } catch (e: Exception) {
-            println("Error searching Excel file: ${e.message}")
-            return emptyList()
-        } finally {
-            workbook.close()
+            e.printStackTrace()
+        }
+    }
+    fun getExcelCells(context: Context, cellRef1: String, cellRef2: String): Pair<String, String> {
+        try {
+            val ref1 = CellReference(cellRef1)
+            val ref2 = CellReference(cellRef2)
+            val row1 = ref1.row
+            val col1 = ref1.col.toInt()
+            val row2 = ref2.row
+            val col2 = ref2.col.toInt()
+
+            // Access record.xlsx
+            val file = File(context.filesDir, "record.xlsx")
+            if (!file.exists()) {
+                throw Exception("record.xlsx not found in internal storage")
+            }
+
+            // Read the Excel file
+            FileInputStream(file).use { inputStream ->
+                val workbook = XSSFWorkbook(inputStream)
+                val sheet = workbook.getSheet("Sheet3")
+                    ?: throw Exception("Sheet3 not found in record.xlsx")
+
+                // Read cell values
+                val cell1 = sheet.getRow(row1)?.getCell(col1, org.apache.poi.ss.usermodel.Row.MissingCellPolicy.CREATE_NULL_AS_BLANK)
+                val cell2 = sheet.getRow(row2)?.getCell(col2, org.apache.poi.ss.usermodel.Row.MissingCellPolicy.CREATE_NULL_AS_BLANK)
+                val value1 = cell1.toString()
+                val value2 = cell2.toString()
+
+                workbook.close()
+                return Pair(value1, value2)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return Pair("null", "null")
         }
     }
 }
