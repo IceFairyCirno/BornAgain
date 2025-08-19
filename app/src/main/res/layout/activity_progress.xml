@@ -35,7 +35,7 @@
         android:layout_height="wrap_content"
         app:layout_constraintTop_toBottomOf="@id/ProgressText"
         app:layout_constraintStart_toStartOf="parent"
-        android:text="Weight Change"
+        android:text="Body Weight Change"
         android:textSize="20sp"
         android:textStyle="bold"
         android:layout_marginTop="16sp"/>
@@ -92,7 +92,39 @@
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_gravity="center"/>
     </androidx.cardview.widget.CardView>
-
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/WeightLiftedContainer"
+        app:layout_constraintStart_toStartOf="@id/ProgressText"
+        app:layout_constraintEnd_toEndOf="@id/ProgressText"
+        android:layout_marginTop="32dp"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:text="Today's Weight:"
+            android:layout_weight="1"
+            android:textSize="18sp"
+            android:layout_gravity="center_vertical"
+            android:gravity="center"/>
+        <EditText
+            android:id="@+id/EditBodyWeight"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:textSize="16sp"
+            android:layout_gravity="center_vertical"
+            android:gravity="center"
+            android:inputType="numberDecimal"/>
+        <Button
+            android:id="@+id/SaveBodyWeight"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="Save"
+            android:backgroundTint="@color/blue"/>
+    </LinearLayout>
 
 
 

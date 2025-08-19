@@ -42,7 +42,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:text="Rest Time"
-                android:textSize="20sp"
+                android:textSize="18sp"
                 android:layout_weight="1.8"/>
             <LinearLayout
                 android:layout_width="0dp"
@@ -51,11 +51,12 @@
                 android:layout_weight="1">
                 <ImageButton
                     android:id="@+id/DecreaseRestTimeButton"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:contentDescription="Decrease"
                     android:src="@drawable/minus"
-                    android:background="@drawable/greybutton_bg"/>
+                    android:background="@drawable/greybutton_bg"
+                    android:layout_gravity="center"/>
                 <TextView
                     android:id="@+id/SettingRestTime"
                     android:layout_width="0dp"
@@ -67,11 +68,12 @@
                     android:textSize="20sp"/>
                 <ImageButton
                     android:id="@+id/IncreaseRestTimeButton"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:contentDescription="Increase"
                     android:src="@drawable/add"
-                    android:background="@drawable/greybutton_bg"/>
+                    android:background="@drawable/greybutton_bg"
+                    android:layout_gravity="center"/>
             </LinearLayout>
         </TableRow>
         <TableRow
@@ -79,8 +81,8 @@
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Total Set"
-                android:textSize="20sp"
+                android:text="Total Sets"
+                android:textSize="18sp"
                 android:layout_weight="1.8"/>
             <LinearLayout
                 android:layout_width="0dp"
@@ -89,11 +91,12 @@
                 android:layout_weight="1">
                 <ImageButton
                     android:id="@+id/DecreaseTotalSetButton"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:contentDescription="Decrease"
                     android:src="@drawable/minus"
-                    android:background="@drawable/greybutton_bg"/>
+                    android:background="@drawable/greybutton_bg"
+                    android:layout_gravity="center"/>
                 <TextView
                     android:id="@+id/SettingTotalSet"
                     android:layout_width="0dp"
@@ -105,11 +108,52 @@
                     android:textSize="20sp"/>
                 <ImageButton
                     android:id="@+id/IncreaseTotalSetButton"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:contentDescription="Increase"
                     android:src="@drawable/add"
-                    android:background="@drawable/greybutton_bg"/>
+                    android:background="@drawable/greybutton_bg"
+                    android:layout_gravity="center"/>
+            </LinearLayout>
+        </TableRow>
+        <TableRow
+            android:layout_marginTop="32sp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="MET (recommand 3/4/5)"
+                android:textSize="18sp"
+                android:layout_weight="1.8"/>
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_weight="1">
+                <ImageButton
+                    android:id="@+id/DecreaseMETButton"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="Decrease"
+                    android:src="@drawable/minus"
+                    android:background="@drawable/greybutton_bg"
+                    android:layout_gravity="center"/>
+                <TextView
+                    android:id="@+id/SettingMET"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="0"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:textSize="20sp"/>
+                <ImageButton
+                    android:id="@+id/IncreaseMETButton"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="Increase"
+                    android:src="@drawable/add"
+                    android:background="@drawable/greybutton_bg"
+                    android:layout_gravity="center"/>
             </LinearLayout>
         </TableRow>
     </TableLayout>

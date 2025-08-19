@@ -1,6 +1,7 @@
 package com.example.qrcodescanner
 
 import android.content.Context
+import android.util.Log
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import org.apache.poi.ss.util.CellReference
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
@@ -9,134 +10,351 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 
-class ExcelHelper {
-    fun createExcel(context: Context, fileName: String): File? {
-        val file = File(context.filesDir, fileName)
-        if (file.exists()) {
-            return null
-        }
-        val workbook = XSSFWorkbook()
-        workbook.createSheet("Sheet1")
-        try {
-            FileOutputStream(file).use { fileOut ->
-                workbook.write(fileOut)
-            }
-            println("Excel file created at: ${file.absolutePath}")
-            return file
-        } catch (e: IOException) {
-            println("Error creating Excel file: ${e.message}")
-            return null
-        } finally {
-            workbook.close()
-        }
+class ExcelHelper(private val context: Context) {
+    companion object {
+        private const val TAG = "ExcelHelper"
     }
-    fun modifyExcel(context: Context, fileName: String, rowData: List<String>) {
-        val file = File(context.filesDir, fileName)
-        if (!file.exists()) {
-            println("File does not exist: ${file.absolutePath}")
-            return
-        }
-        val workbook = try {
-            FileInputStream(file).use { WorkbookFactory.create(it) }
-        } catch (e: Exception) {
-            println("Error: Excel file is corrupted or unreadable: ${e.message}")
-            return
-        }
-        val tempFile = File(context.filesDir, "$fileName.temp")
-        try {
-            val sheet = workbook.getSheetAt(0)
-            val row = sheet.createRow(sheet.lastRowNum + 1)
-            rowData.forEachIndexed { index, data ->
-                row.createCell(index).setCellValue(data)
-            }
-            FileOutputStream(tempFile).use { fileOut ->
-                workbook.write(fileOut)
-            }
-            workbook.close()
-            if (tempFile.exists() && file.delete()) {
-                tempFile.renameTo(file)
-                println("Row appended to Excel file: ${file.absolutePath}")
-            } else {
-                println("Error: Failed to replace original file")
-            }
-        } catch (e: IOException) {
-            println("Error writing to Excel file: ${e.message}")
-        } catch (e: Exception) {
-            println("Unexpected error during modification: ${e.message}")
-        } finally {
-            if (tempFile.exists()) {
-                tempFile.delete()
-            }
-        }
-    }
-    fun modifyExcelCells(context: Context, cellRef1: String, newValue1: String, cellRef2: String, newValue2: String){
-        try {
-            val ref1 = CellReference(cellRef1)
-            val ref2 = CellReference(cellRef2)
-            val row1 = ref1.row
-            val col1 = ref1.col.toInt()
-            val row2 = ref2.row
-            val col2 = ref2.col.toInt()
 
-            val file = File(context.filesDir, "record.xlsx")
+    fun initExcel(filename: String) {
+        try {
+            val file = File(context.filesDir, filename)
+            if (file.exists()) {
+                Log.i(TAG, "Excel file already exists: $filename, skipping creation")
+                return
+            }
+
+            Log.d(TAG, "Initializing Excel file: $filename")
+            val workbook = XSSFWorkbook()
+            workbook.createSheet("record")
+            workbook.createSheet("bodydata")
+            workbook.createSheet("settings")
+
+            FileOutputStream(file).use { outputStream ->
+                workbook.write(outputStream)
+            }
+            workbook.close()
+            Log.i(TAG, "Successfully created Excel file: $filename with sheets: record, bodydata, settings")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create Excel file: $filename, error: ${e.message}", e)
+            throw RuntimeException("Failed to create Excel file: ${e.message}")
+        }
+    }
+
+    fun deleteExcel(filename: String): Boolean {
+        try {
+            Log.d(TAG, "Attempting to delete Excel file: $filename")
+            val file = File(context.filesDir, filename)
+            return if (file.exists()) {
+                val deleted = file.delete()
+                if (deleted) {
+                    Log.i(TAG, "Successfully deleted Excel file: $filename")
+                } else {
+                    Log.w(TAG, "Failed to delete Excel file: $filename (exists but deletion failed)")
+                }
+                deleted
+            } else {
+                Log.w(TAG, "Excel file does not exist: $filename")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete Excel file: $filename, error: ${e.message}", e)
+            throw RuntimeException("Failed to delete Excel file: ${e.message}")
+        }
+    }
+
+    fun searchFromBottomExcel(filename: String, sheetName: String, col: Int, colValue: String, n: Int): List<List<String>> {
+        try {
+            Log.d(TAG, "Searching from bottom in $filename, sheet: $sheetName, column: $col, value: $colValue, limit: $n")
+            val file = File(context.filesDir, filename)
             if (!file.exists()) {
-                throw Exception("record.xlsx not found in internal storage")
+                Log.w(TAG, "Excel file does not exist: $filename")
+                return emptyList()
             }
 
             FileInputStream(file).use { inputStream ->
                 val workbook = XSSFWorkbook(inputStream)
-                val sheet = workbook.getSheet("Sheet3")
-                    ?: throw Exception("Sheet3 not found in record.xlsx")
+                val sheet = workbook.getSheet(sheetName)
+                if (sheet == null) {
+                    Log.w(TAG, "Sheet does not exist: $sheetName in $filename")
+                    workbook.close()
+                    return emptyList()
+                }
 
-                val cell1 = sheet.getRow(row1)?.getCell(col1, org.apache.poi.ss.usermodel.Row.MissingCellPolicy.CREATE_NULL_AS_BLANK)
-                val cell2 = sheet.getRow(row2)?.getCell(col2, org.apache.poi.ss.usermodel.Row.MissingCellPolicy.CREATE_NULL_AS_BLANK)
-                cell1?.setCellValue(newValue1)
-                cell2?.setCellValue(newValue2)
+                val result = mutableListOf<List<String>>()
+                val lastRow = sheet.lastRowNum
 
-                FileOutputStream(file).use { outputStream ->
-                    workbook.write(outputStream)
+                for (rowIndex in lastRow downTo 0) {
+                    if (result.size >= n) break
+                    val row = sheet.getRow(rowIndex) ?: continue
+                    val cell = row.getCell(col - 1) ?: continue
+                    if (cell.toString() == colValue) {
+                        val rowData = mutableListOf<String>()
+                        row.forEach { cell ->
+                            rowData.add(cell.toString())
+                        }
+                        result.add(rowData)
+                        Log.d(TAG, "Found matching row at index $rowIndex: $rowData")
+                    }
                 }
 
                 workbook.close()
-
+                Log.i(TAG, "Search completed, found ${result.size} matching rows")
+                return result
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Failed to search Excel file: $filename, sheet: $sheetName, error: ${e.message}", e)
+            throw RuntimeException("Failed to search Excel file: ${e.message}")
         }
     }
-    fun getExcelCells(context: Context, cellRef1: String, cellRef2: String): Pair<String, String> {
-        try {
-            val ref1 = CellReference(cellRef1)
-            val ref2 = CellReference(cellRef2)
-            val row1 = ref1.row
-            val col1 = ref1.col.toInt()
-            val row2 = ref2.row
-            val col2 = ref2.col.toInt()
 
-            // Access record.xlsx
-            val file = File(context.filesDir, "record.xlsx")
+    fun searchUniqueFromBottomExcel(filename: String, sheetName: String, col: Int, n: Int): List<List<String>> {
+        try {
+            Log.d(TAG, "Searching unique values from bottom in $filename, sheet: $sheetName, column: $col, limit: $n")
+            val file = File(context.filesDir, filename)
             if (!file.exists()) {
-                throw Exception("record.xlsx not found in internal storage")
+                Log.w(TAG, "Excel file does not exist: $filename")
+                return emptyList()
             }
 
-            // Read the Excel file
             FileInputStream(file).use { inputStream ->
                 val workbook = XSSFWorkbook(inputStream)
-                val sheet = workbook.getSheet("Sheet3")
-                    ?: throw Exception("Sheet3 not found in record.xlsx")
+                val sheet = workbook.getSheet(sheetName)
+                if (sheet == null) {
+                    Log.w(TAG, "Sheet does not exist: $sheetName in $filename")
+                    workbook.close()
+                    return emptyList()
+                }
 
-                // Read cell values
-                val cell1 = sheet.getRow(row1)?.getCell(col1, org.apache.poi.ss.usermodel.Row.MissingCellPolicy.CREATE_NULL_AS_BLANK)
-                val cell2 = sheet.getRow(row2)?.getCell(col2, org.apache.poi.ss.usermodel.Row.MissingCellPolicy.CREATE_NULL_AS_BLANK)
-                val value1 = cell1.toString()
-                val value2 = cell2.toString()
+                val result = mutableListOf<List<String>>()
+                val seenValues = mutableSetOf<String>()
+                val lastRow = sheet.lastRowNum
+
+                for (rowIndex in lastRow downTo 0) {
+                    if (result.size >= n) break
+                    val row = sheet.getRow(rowIndex) ?: continue
+                    val cell = row.getCell(col - 1) ?: continue
+                    val cellValue = cell.toString()
+                    if (cellValue.isNotEmpty() && seenValues.add(cellValue)) {
+                        val rowData = mutableListOf<String>()
+                        row.forEach { cell ->
+                            rowData.add(cell.toString())
+                        }
+                        result.add(rowData)
+                        Log.d(TAG, "Found unique row at index $rowIndex with value $cellValue: $rowData")
+                    }
+                }
 
                 workbook.close()
-                return Pair(value1, value2)
+                Log.i(TAG, "Unique search completed, found ${result.size} unique rows")
+                return result
             }
         } catch (e: Exception) {
-            e.printStackTrace()
-            return Pair("null", "null")
+            Log.e(TAG, "Failed to search unique values in $filename, sheet: $sheetName, error: ${e.message}", e)
+            throw RuntimeException("Failed to search unique values in Excel file: ${e.message}")
+        }
+    }
+
+    fun modifyExcelFromBottom(filename: String, sheetName: String, data: List<String>) {
+        try {
+            Log.d(TAG, "Appending row to $filename, sheet: $sheetName, data: $data")
+            val file = File(context.filesDir, filename)
+            val workbook = if (file.exists()) {
+                FileInputStream(file).use { inputStream ->
+                    XSSFWorkbook(inputStream)
+                }
+            } else {
+                Log.w(TAG, "Excel file does not exist, creating new: $filename")
+                XSSFWorkbook()
+            }
+
+            val sheet = workbook.getSheet(sheetName) ?: workbook.createSheet(sheetName)
+            val newRow = sheet.createRow(sheet.lastRowNum + 1)
+
+            data.forEachIndexed { index, value ->
+                val cell = newRow.createCell(index)
+                cell.setCellValue(value)
+            }
+
+            FileOutputStream(file).use { outputStream ->
+                workbook.write(outputStream)
+            }
+            workbook.close()
+            Log.i(TAG, "Successfully appended row to $filename, sheet: $sheetName")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to append row to $filename, sheet: $sheetName, error: ${e.message}", e)
+            throw RuntimeException("Failed to modify Excel file: ${e.message}")
+        }
+    }
+
+    fun getCellExcel(filename: String, sheetName: String, cell: String): String {
+        try {
+            Log.d(TAG, "Reading cell $cell from $filename, sheet: $sheetName")
+            val file = File(context.filesDir, filename)
+            if (!file.exists()) {
+                Log.w(TAG, "Excel file does not exist: $filename")
+                return ""
+            }
+
+            FileInputStream(file).use { inputStream ->
+                val workbook = XSSFWorkbook(inputStream)
+                val sheet = workbook.getSheet(sheetName)
+                if (sheet == null) {
+                    Log.w(TAG, "Sheet does not exist: $sheetName in $filename")
+                    workbook.close()
+                    return ""
+                }
+
+                val cellReference = org.apache.poi.ss.util.CellReference(cell)
+                val row = sheet.getRow(cellReference.row)
+                val cellValue = row?.getCell(cellReference.col.toInt())?.toString() ?: ""
+
+                workbook.close()
+                Log.d(TAG, "Cell $cell value: $cellValue")
+                return cellValue
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read cell $cell from $filename, sheet: $sheetName, error: ${e.message}", e)
+            throw RuntimeException("Failed to read cell from Excel file: ${e.message}")
+        }
+    }
+
+    fun modifyCellExcel(filename: String, sheetName: String, cell: String, value: String) {
+        try {
+            Log.d(TAG, "Modifying cell $cell in $filename, sheet: $sheetName, new value: $value")
+            val file = File(context.filesDir, filename)
+            val workbook = if (file.exists()) {
+                FileInputStream(file).use { inputStream ->
+                    XSSFWorkbook(inputStream)
+                }
+            } else {
+                Log.w(TAG, "Excel file does not exist, creating new: $filename")
+                XSSFWorkbook()
+            }
+
+            val sheet = workbook.getSheet(sheetName) ?: workbook.createSheet(sheetName)
+            val cellReference = org.apache.poi.ss.util.CellReference(cell)
+            val row = sheet.getRow(cellReference.row) ?: sheet.createRow(cellReference.row)
+            val targetCell = row.createCell(cellReference.col.toInt())
+            targetCell.setCellValue(value)
+
+            FileOutputStream(file).use { outputStream ->
+                workbook.write(outputStream)
+            }
+            workbook.close()
+            Log.i(TAG, "Successfully modified cell $cell in $filename, sheet: $sheetName")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to modify cell $cell in $filename, sheet: $sheetName, error: ${e.message}", e)
+            throw RuntimeException("Failed to modify cell in Excel file: ${e.message}")
+        }
+    }
+    fun copyExcel(srcfile: String, srcsheet: String, targetfile: String, targetsheet: String) {
+        try {
+            Log.d(TAG, "Copying sheet $srcsheet from $srcfile to $targetsheet in $targetfile")
+            val srcFile = File(context.filesDir, srcfile)
+            if (!srcFile.exists()) {
+                Log.w(TAG, "Source Excel file does not exist: $srcfile")
+                throw RuntimeException("Source Excel file does not exist: $srcfile")
+            }
+
+            val targetFile = File(context.filesDir, targetfile)
+            val targetWorkbook = if (targetFile.exists()) {
+                FileInputStream(targetFile).use { inputStream ->
+                    XSSFWorkbook(inputStream)
+                }
+            } else {
+                Log.w(TAG, "Target Excel file does not exist, creating new: $targetfile")
+                XSSFWorkbook()
+            }
+
+            FileInputStream(srcFile).use { inputStream ->
+                val srcWorkbook = XSSFWorkbook(inputStream)
+                val srcSheet = srcWorkbook.getSheet(srcsheet)
+                if (srcSheet == null) {
+                    Log.w(TAG, "Source sheet does not exist: $srcsheet in $srcfile")
+                    srcWorkbook.close()
+                    throw RuntimeException("Source sheet does not exist: $srcsheet")
+                }
+
+                val targetSheet = targetWorkbook.getSheet(targetsheet) ?: targetWorkbook.createSheet(targetsheet)
+                val lastRowNum = srcSheet.lastRowNum
+                val startRow = if (targetSheet.lastRowNum >= 0) targetSheet.lastRowNum + 1 else 0
+
+                for (i in 0..lastRowNum) {
+                    val srcRow = srcSheet.getRow(i)
+                    if (srcRow != null) {
+                        val newRow = targetSheet.createRow(startRow + i)
+                        for (j in 0 until srcRow.lastCellNum) {
+                            val srcCell = srcRow.getCell(j)
+                            if (srcCell != null) {
+                                val newCell = newRow.createCell(j)
+                                when (srcCell.cellType) {
+                                    org.apache.poi.ss.usermodel.CellType.NUMERIC -> newCell.setCellValue(srcCell.numericCellValue)
+                                    org.apache.poi.ss.usermodel.CellType.STRING -> newCell.setCellValue(srcCell.stringCellValue)
+                                    org.apache.poi.ss.usermodel.CellType.BOOLEAN -> newCell.setCellValue(srcCell.booleanCellValue)
+                                    else -> newCell.setCellValue(srcCell.toString())
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            FileOutputStream(targetFile).use { outputStream ->
+                targetWorkbook.write(outputStream)
+            }
+            targetWorkbook.close()
+            Log.i(TAG, "Successfully appended sheet $srcsheet to $targetsheet in $targetfile")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to copy sheet from $srcfile to $targetfile, error: ${e.message}", e)
+            throw RuntimeException("Failed to copy sheet: ${e.message}")
+        }
+    }
+
+    fun searchFromBottomN(filename: String, sheetName: String, n: Int): List<List<String>> {
+        try {
+            Log.d(TAG, "Searching last $n rows from bottom in $filename, sheet: $sheetName")
+            val file = File(context.filesDir, filename)
+            if (!file.exists()) {
+                Log.w(TAG, "Excel file does not exist: $filename")
+                return emptyList()
+            }
+
+            FileInputStream(file).use { inputStream ->
+                val workbook = XSSFWorkbook(inputStream)
+                val sheet = workbook.getSheet(sheetName)
+                if (sheet == null) {
+                    Log.w(TAG, "Sheet does not exist: $sheetName in $filename")
+                    workbook.close()
+                    return emptyList()
+                }
+
+                val result = mutableListOf<List<String>>()
+                val lastRow = sheet.lastRowNum
+                val rowsToFetch = minOf(n, lastRow + 1) // Ensure n doesn't exceed total rows
+
+                for (rowIndex in lastRow downTo maxOf(0, lastRow - rowsToFetch + 1)) {
+                    val row = sheet.getRow(rowIndex) ?: continue
+                    val rowData = mutableListOf<String>()
+                    row.forEach { cell ->
+                        rowData.add(when (cell.cellType) {
+                            org.apache.poi.ss.usermodel.CellType.NUMERIC -> cell.numericCellValue.toInt().toString()
+                            else -> cell.toString()
+                        })
+                    }
+                    // Only add the row if it contains at least one non-empty value
+                    if (rowData.any { it.isNotEmpty() }) {
+                        result.add(rowData)
+                        Log.d(TAG, "Added row at index $rowIndex: $rowData")
+                    }
+                }
+
+                workbook.close()
+                Log.i(TAG, "Search completed, retrieved ${result.size} rows")
+                return result.reversed() // Reverse to return rows in top-to-bottom order
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to search last $n rows in $filename, sheet: $sheetName, error: ${e.message}", e)
+            throw RuntimeException("Failed to search last $n rows: ${e.message}")
         }
     }
 }

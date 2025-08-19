@@ -22,6 +22,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 class MainActivity2 : AppCompatActivity() {
@@ -30,7 +31,7 @@ class MainActivity2 : AppCompatActivity() {
     private lateinit var excelHelper: ExcelHelper
 
     var countDownTimer: CountDownTimer? = null
-    private var currentTime: Long = 60000
+    private var currentTime: Long = 0
     private var currentSet = 1
 
     private val channelId = "default_channel"
@@ -44,10 +45,11 @@ class MainActivity2 : AppCompatActivity() {
         setContentView(R.layout.activity_main2)
         binding = ActivityMain2Binding.inflate(layoutInflater)
         setContentView(binding.root)
-        excelHelper = ExcelHelper()
+        excelHelper = ExcelHelper(this)
         val exerciseName = intent.getStringExtra("exerciseName").toString()
-
+        currentTime = excelHelper.getCellExcel("born_again-db.xlsx", "settings", "A1").toLong()
         createNotificationChannel()
+        binding.SetNumber.text = "Set $currentSet/${excelHelper.getCellExcel("born_again-db.xlsx", "settings", "B1")}"
 
         val formattedName = convertExerciseName(exerciseName)
 
@@ -140,7 +142,7 @@ class MainActivity2 : AppCompatActivity() {
 
     private fun setupScanNextButton(){
         binding.NextExerciseButton.setOnClickListener{
-            saveDataToMain(this, "temp.xlsx", "record.xlsx")
+            excelHelper.copyExcel("temp.xlsx", "record", "born_again-db.xlsx", "record")
             showMsg("Exercise Saved!")
             val options = ScanOptions()
             options.setPrompt("Scan a QR Code")
@@ -150,25 +152,32 @@ class MainActivity2 : AppCompatActivity() {
             barcodeLauncher.launch(options)
         }
     }
-    private val barcodeLauncher = registerForActivityResult(ScanContract()){ result ->
+
+    private val barcodeLauncher = registerForActivityResult(ScanContract()){result ->
         if (result.contents!=null){
-            if ("gym" in result.contents){
+            if ("gym" in result.contents) {
                 val exerciseName = (result.contents).split("/").last()
-                val intent = Intent(this, MainActivity2::class.java).apply{
-                    putExtra("exerciseName", exerciseName)
+                val intent: Intent
+                if ("cable" in result.contents || "multi" in result.contents) {
+                    intent = Intent(this, SubMachines::class.java).apply {
+                        putExtra("machineName", exerciseName)
+                    }
+                } else {
+                    intent = Intent(this, MainActivity2::class.java).apply {
+                        putExtra("exerciseName", exerciseName)
+                    }
                 }
                 startActivity(intent)
+                finish()
             }
         } else{
             Toast.makeText(this, "Invalid QR Code", Toast.LENGTH_SHORT).show()
         }
     }
 
-
     private fun tempSaveData(rowData: List<String>){
-        // Save one set data (for the button of complete set
-        excelHelper.createExcel(this,"temp.xlsx")
-        excelHelper.modifyExcel(this, "temp.xlsx", rowData)
+        excelHelper.initExcel("temp.xlsx")
+        excelHelper.modifyExcelFromBottom("temp.xlsx", "record", rowData)
     }
 
     private fun getCurrentDateFormatted(): String {
@@ -176,47 +185,21 @@ class MainActivity2 : AppCompatActivity() {
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
         return currentDate.format(formatter)
     }
+    private fun getCurrentTimeInHHMM(): String {
+        val currentTime = LocalTime.now()
+        val formatter = DateTimeFormatter.ofPattern("HH:mm")
+        return currentTime.format(formatter)
+    }
+
 
     private fun setupSaveButton(){
         binding.SaveExerciseButton.setOnClickListener{
-            saveDataToMain(this, "temp.xlsx", "record.xlsx")
+            excelHelper.copyExcel("temp.xlsx", "record", "born_again-db.xlsx", "record")
             showMsg("Exercise Saved!")
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
             finish()
         }
-    }
-
-    private fun saveDataToMain(context: Context, sourceFileName: String, targetFileName: String) {
-        val internalDir = context.filesDir
-
-        val sourceFile = File(internalDir, sourceFileName)
-        val targetFile = File(internalDir, targetFileName)
-
-        FileInputStream(sourceFile).use { sourceFileInputStream ->
-            val sourceWorkbook = WorkbookFactory.create(sourceFileInputStream)
-            val sourceSheet = sourceWorkbook.getSheetAt(0)
-
-            FileInputStream(targetFile).use { targetFileInputStream ->
-                val targetWorkbook = WorkbookFactory.create(targetFileInputStream)
-                val targetSheet = targetWorkbook.getSheetAt(0)
-                val lastRowNum = targetSheet.lastRowNum
-                for (i in 0..sourceSheet.lastRowNum) {
-                    val sourceRow = sourceSheet.getRow(i)
-                    val targetRow = targetSheet.createRow(lastRowNum + 1 + i)
-
-                    for (j in 0 until sourceRow.lastCellNum) {
-                        val sourceCell = sourceRow.getCell(j)
-                        val targetCell = targetRow.createCell(j)
-                        targetCell.setCellValue(sourceCell.toString())
-                    }
-                }
-                FileOutputStream(targetFile).use { outputStream ->
-                    targetWorkbook.write(outputStream)
-                }
-            }
-        }
-        sourceFile.delete()
     }
 
     private fun showMsg(message: String) {
@@ -266,7 +249,7 @@ class MainActivity2 : AppCompatActivity() {
         val setNum = currentSet.toString()
         updateCompeletedSet(setNum, displayData)
         currentSet += 1
-        binding.SetNumber.text = "Set $currentSet"
+        binding.SetNumber.text = "Set $currentSet/${excelHelper.getCellExcel("born_again-db.xlsx", "settings", "B1")}"
     }
 
     private fun collectSetData(): String{
@@ -277,7 +260,7 @@ class MainActivity2 : AppCompatActivity() {
     }
 
     private fun setupTimer(){
-        val totalTime: Long = 60000
+        val totalTime: Long = excelHelper.getCellExcel("born_again-db.xlsx", "settings", "A1").toLong()
         binding.Timer.text = String.format("%02d:%02d", totalTime / 1000 / 60, totalTime / 1000 % 60)
         binding.IncreaseTimerButton.setOnClickListener {
             currentTime = adjustTimer(currentTime, 5000){ newTime -> currentTime = newTime }
@@ -315,12 +298,13 @@ class MainActivity2 : AppCompatActivity() {
 
     private fun setupCompeleteSetButton(formattedName: String){
         binding.SetConfirmButton.setOnClickListener {
-            startTimer(60000) { newTime -> currentTime = newTime }
+            startTimer(excelHelper.getCellExcel("born_again-db.xlsx", "settings", "A1").toLong()) { newTime -> currentTime = newTime }
             val toTempSaveRow = listOf(
                 getCurrentDateFormatted(),
                 formattedName,
                 binding.WeightDisplay.text.toString(),
-                binding.RepsDisplay.text.toString().toInt().toString()
+                binding.RepsDisplay.text.toString().toInt().toString(),
+                getCurrentTimeInHHMM()
             )
             tempSaveData(toTempSaveRow)
             renewCompletedSet()
@@ -329,21 +313,17 @@ class MainActivity2 : AppCompatActivity() {
 
     private fun setupHighestRecord(name: String){
         try {
-            // Open the file from internal storage
-            val file = File(this.filesDir, "record.xlsx")
+            val file = File(this.filesDir, "born_again-db.xlsx")
 
-            // Read the Excel file
             FileInputStream(file).use { fis ->
                 val workbook = XSSFWorkbook(fis)
-                val sheet = workbook.getSheetAt(0) // Assuming first sheet
+                val sheet = workbook.getSheetAt(0)
 
-                // Iterate through rows to find matching names and collect numbers
                 val numbers = mutableListOf<Double>()
                 for (row in sheet) {
-                    val nameCell = row.getCell(1) // Second column (index 1)
-                    val numberCell = row.getCell(2) // Third column (index 2)
+                    val nameCell = row.getCell(1)
+                    val numberCell = row.getCell(2)
 
-                    // Check if name matches and number is valid
                     if (nameCell?.stringCellValue == name && numberCell != null) {
                         val number = when (numberCell.cellType) {
                             CellType.NUMERIC -> numberCell.numericCellValue
