@@ -51,6 +51,7 @@ class Progress : AppCompatActivity() {
 
         val dates = convertDateList(getElementsAtIndex(bodydata, 0))
         val weights = getElementsAtIndex(bodydata, 1).map { it.toDouble() }
+        val calories = getElementsAtIndex(bodydata, 2).map { it.toDouble() }
 
         setupBodyWeightChangeChart(binding.Chart, weights, dates)
         setupWeightLiftedChart(binding.Chart2, weights, dates)
@@ -66,10 +67,8 @@ class Progress : AppCompatActivity() {
 
     fun convertDateList(dateList: List<String>): List<String> {
         return dateList.map { date ->
-            // Split the input string by "-"
             val parts = date.split("-")
             if (parts.size == 3) {
-                // Extract day and month and return in "dd/mm" format
                 val day = parts[2]
                 val month = parts[1]
                 "$day/$month"
@@ -78,6 +77,7 @@ class Progress : AppCompatActivity() {
             }
         }
     }
+
     fun setupEditBodyWeight(nestedlist: List<List<String>>) {
         val latest = nestedlist.last()[0]
         if (LocalDate.parse(latest, DateTimeFormatter.ofPattern("yyyy-MM-dd")) == LocalDate.now()){

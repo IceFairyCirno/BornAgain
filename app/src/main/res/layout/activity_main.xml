@@ -36,7 +36,6 @@
             app:layout_constraintStart_toStartOf="@id/WelcomeText"
             android:layout_marginTop="8sp">
         </TextView>
-
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -456,7 +455,7 @@
                 android:id="@+id/SettingButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Setting"
+                android:text="Settings"
                 app:icon="@drawable/settingicon"
                 app:iconPadding="0sp"
                 app:iconGravity="top"

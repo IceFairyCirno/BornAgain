@@ -444,7 +444,7 @@ class ExcelHelper(private val context: Context) {
                         }
                     }
                     val avgCol3 = if (col3Values.isNotEmpty()) {
-                        col3Values.average().toString()
+                        String.format("%.2f", col3Values.average())
                     } else {
                         Log.w(TAG, "No valid double col3 values for col1: $col1, col2: $col2")
                         "0.0"
