@@ -2,6 +2,7 @@ package com.example.qrcodescanner
 
 import android.content.Context
 import android.util.Log
+import org.apache.poi.ss.usermodel.CellType
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import org.apache.poi.ss.util.CellReference
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
@@ -355,6 +356,114 @@ class ExcelHelper(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to search last $n rows in $filename, sheet: $sheetName, error: ${e.message}", e)
             throw RuntimeException("Failed to search last $n rows: ${e.message}")
+        }
+    }
+
+    fun processExcelFile(filename: String, sheetName: String): List<List<String>> {
+        try {
+            // Access the file from internal storage
+            Log.d(TAG, "Attempting to access file: $filename")
+            val file = File(context.filesDir, filename)
+            if (!file.exists()) {
+                Log.e(TAG, "File $filename does not exist in internal storage")
+                return emptyList()
+            }
+
+            // Read the Excel file
+            Log.d(TAG, "Reading Excel file: $filename")
+            FileInputStream(file).use { inputStream ->
+                val workbook = XSSFWorkbook(inputStream)
+                Log.d(TAG, "Workbook loaded successfully")
+                val sheet = workbook.getSheet(sheetName)
+                if (sheet == null) {
+                    Log.e(TAG, "Sheet $sheetName not found in $filename")
+                    workbook.close()
+                    return emptyList()
+                }
+                Log.d(TAG, "Sheet $sheetName loaded successfully")
+
+                // Get all rows
+                val rows = sheet.iterator().asSequence().toList()
+                if (rows.isEmpty()) {
+                    Log.w(TAG, "Sheet $sheetName is empty")
+                    workbook.close()
+                    return emptyList()
+                }
+                Log.i(TAG, "Found ${rows.size} rows in sheet $sheetName")
+
+                // Map to store unique col2 values and their last row (with col1)
+                val uniqueCol2Rows = mutableMapOf<String, Pair<String, Int>>()
+                rows.forEachIndexed { index, row ->
+                    val col2 = row.getCell(1)?.toString() ?: ""
+                    val col1 = row.getCell(0)?.toString() ?: ""
+                    if (col2.isNotEmpty() && col1.isNotEmpty()) {
+                        uniqueCol2Rows[col2] = Pair(col1, index)
+                    }
+                }
+                Log.d(TAG, "Unique col2 values with col1: ${uniqueCol2Rows.map { "${it.key}(${it.value.first})" }}")
+
+                // Get the last 3 unique col2 rows based on their last row index
+                val lastThreeCol2Rows = uniqueCol2Rows.entries
+                    .sortedByDescending { it.value.second }
+                    .take(3)
+                    .map { Pair(it.value.first, it.key) } // Pair(col1, col2)
+                Log.i(TAG, "Last 3 unique col2 rows (col1, col2): $lastThreeCol2Rows")
+
+                val result = mutableListOf<List<String>>()
+
+                // Process each (col1, col2) pair from the last 3 unique col2 rows
+                for ((col1, col2) in lastThreeCol2Rows) {
+                    Log.d(TAG, "Processing col1: $col1, col2: $col2")
+                    // Find rows matching both col1 and col2
+                    val matchingRows = rows.filter { row ->
+                        val rowCol1 = row.getCell(0)?.toString() ?: ""
+                        val rowCol2 = row.getCell(1)?.toString() ?: ""
+                        rowCol1 == col1 && rowCol2 == col2
+                    }
+                    Log.d(TAG, "Found ${matchingRows.size} rows for col1: $col1, col2: $col2")
+
+                    // Calculate average of col3 and count rows
+                    val col3Values = matchingRows.mapNotNull { row ->
+                        val cell = row.getCell(2)
+                        when (cell?.cellType) {
+                            CellType.NUMERIC -> cell.numericCellValue
+                            CellType.STRING -> try {
+                                cell.stringCellValue.toDoubleOrNull().also { value ->
+                                    if (value == null) {
+                                        Log.w(TAG, "Cannot parse string cell as double in row ${row.rowNum}, col3: ${cell.stringCellValue}")
+                                    }
+                                }
+                            } catch (e: NumberFormatException) {
+                                Log.w(TAG, "Invalid number format in row ${row.rowNum}, col3: ${cell.stringCellValue}")
+                                null
+                            }
+                            else -> {
+                                Log.w(TAG, "Non-numeric cell in row ${row.rowNum}, col3: ${cell?.toString()}")
+                                null
+                            }
+                        }
+                    }
+                    val avgCol3 = if (col3Values.isNotEmpty()) {
+                        col3Values.average().toString()
+                    } else {
+                        Log.w(TAG, "No valid double col3 values for col1: $col1, col2: $col2")
+                        "0.0"
+                    }
+                    val rowCount = matchingRows.size.toString()
+                    Log.d(TAG, "col1: $col1, col2: $col2, avgCol3: $avgCol3, rowCount: $rowCount")
+
+                    // Add [col1, col2, avgCol3, rowCount] to result
+                    result.add(listOf(col1, col2, avgCol3, rowCount))
+                }
+
+                workbook.close()
+                Log.d(TAG, "Workbook closed")
+                Log.i(TAG, "Processing complete. Result size: ${result.size}")
+                return result
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing file $filename: ${e.message}", e)
+            return emptyList()
         }
     }
 }

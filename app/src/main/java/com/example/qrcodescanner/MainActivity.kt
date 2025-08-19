@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
@@ -42,8 +43,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        excelHelper.initExcel("born_again-db.xlsx")
         requestRequiredPermissions()
+        excelHelper.initExcel("born_again-db.xlsx")
 
         binding.ScanButton.setOnClickListener {
             val options = ScanOptions()
@@ -57,17 +58,14 @@ class MainActivity : AppCompatActivity() {
         binding.MusicButton.setOnClickListener{
             val intent = Intent(this, MusicPlayer::class.java)
             startActivity(intent)
-            finish()
         }
         binding.ProgressButton.setOnClickListener{
             val intent = Intent(this, Progress::class.java)
             startActivity(intent)
-            finish()
         }
         binding.SettingButton.setOnClickListener{
             val intent = Intent(this, SystemConfig::class.java)
             startActivity(intent)
-            finish()
         }
 
         setupRecentExercise()
@@ -99,7 +97,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     private val barcodeLauncher = registerForActivityResult(ScanContract()){result ->
         if (result.contents!=null){
             if ("gym" in result.contents) {
@@ -130,7 +127,6 @@ class MainActivity : AppCompatActivity() {
             textViews[i].text = values[i]
         }
     }
-
     private fun getPassedDate(inputDate: String): String {
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
@@ -146,19 +142,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private fun getRecents(): MutableList<List<String>>{
-        val recentRecords = excelHelper.searchUniqueFromBottomExcel("born_again-db.xlsx", "record", 2, 3)
+        val recentRecords = excelHelper.processExcelFile("born_again-db.xlsx", "record")
         var recordList: MutableList<List<String>> = mutableListOf()
         for (record in recentRecords) {
             recordList.add(listOf(
                 getPassedDate(record[0]),
                 record[1],
                 "${record[2]} kg",
-                "${record[3].trim().toDoubleOrNull()?.toInt() ?: 0} Reps"
+                "${record[3].trim().toDoubleOrNull()?.toInt() ?: 0} Sets"
             ))
         }
         return recordList
     }
-
     private fun setupRecentExercise(){
 
         val recents = getRecents()
@@ -189,7 +184,6 @@ class MainActivity : AppCompatActivity() {
             applyToCard(listOf(binding.Card3Date, binding.Card3Name, binding.Card3Weight, binding.Card3Sets), inputData2)
         }
     }
-
     private fun getTodayWeekday(): Int {
         val today = LocalDate.now()
         val dayOfWeek = today.dayOfWeek.value
