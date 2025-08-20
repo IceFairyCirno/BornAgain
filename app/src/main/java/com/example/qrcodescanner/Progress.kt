@@ -1,19 +1,15 @@
 package com.example.qrcodescanner
 
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
-import android.widget.EditText
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import com.example.qrcodescanner.databinding.ActivityMainBinding
 import com.example.qrcodescanner.databinding.ActivityProgressBinding
 import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.LineChart
-import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
 import com.github.mikephil.charting.data.BarEntry
@@ -21,15 +17,9 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
-import com.github.mikephil.charting.formatter.ValueFormatter
-import org.apache.poi.ss.usermodel.CellType
-import org.apache.poi.xssf.usermodel.XSSFWorkbook
-import java.io.File
-import java.io.FileInputStream
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -51,21 +41,30 @@ class Progress : AppCompatActivity() {
 
         val dates = convertDateList(getElementsAtIndex(bodydata, 0))
         val weights = getElementsAtIndex(bodydata, 1).map { it.toDouble() }
-        val calories = getElementsAtIndex(bodydata, 2).map { it.toDouble() }
+
+        val datesForCalories = convertDateList(excelHelper.searchUniqueFromBottomExcel("born_again-db.xlsx", "record", 1, 7).mapNotNull { it.firstOrNull() }.reversed())
+        val calories : MutableList<Double> = mutableListOf()
+        val durations = excelHelper.getLastNUniqueFirstColumnTimeDifferences("born_again-db.xlsx", "record", 7)
+        val met = excelHelper.getCellExcel("born_again-db.xlsx", "settings", "C1").toDouble()
+        val latestBodyWeights = excelHelper.getLastCellWithContentAsString("born_again-db.xlsx", "bodydata").toDouble()
+        for (duration in durations) {
+            val cal = met * latestBodyWeights * duration
+            calories.add(String.format("%.2f", cal).toDouble())
+        }
 
         setupBodyWeightChangeChart(binding.Chart, weights, dates)
-        setupWeightLiftedChart(binding.Chart2, weights, dates)
+        setupWeightLiftedChart(binding.Chart2, calories.reversed(), datesForCalories)
         setupEditBodyWeight(bodydata)
 
         setupHomeButton()
         setupSaveButton()
     }
 
-    fun getElementsAtIndex(lists: List<List<String>>, index: Int): List<String> {
+    private fun getElementsAtIndex(lists: List<List<String>>, index: Int): List<String> {
         return lists.map { it[index] }
     }
 
-    fun convertDateList(dateList: List<String>): List<String> {
+    private fun convertDateList(dateList: List<String>): List<String> {
         return dateList.map { date ->
             val parts = date.split("-")
             if (parts.size == 3) {
@@ -78,11 +77,11 @@ class Progress : AppCompatActivity() {
         }
     }
 
-    fun setupEditBodyWeight(nestedlist: List<List<String>>) {
+    private fun setupEditBodyWeight(nestedlist: List<List<String>>) {
         val latest = nestedlist.last()[0]
         if (LocalDate.parse(latest, DateTimeFormatter.ofPattern("yyyy-MM-dd")) == LocalDate.now()){
             binding.EditBodyWeight.isEnabled = false
-            binding.EditBodyWeight.setText((nestedlist.last()[1]))
+            binding.EditBodyWeight.setText((nestedlist.last()[1]) + " kg")
             binding.SaveBodyWeight.isEnabled = false
         } else{
             binding.EditBodyWeight.isEnabled = true
@@ -90,7 +89,7 @@ class Progress : AppCompatActivity() {
         }
     }
 
-    fun setupSaveButton(){
+    private fun setupSaveButton(){
         binding.SaveBodyWeight.setOnClickListener{
             excelHelper.modifyExcelFromBottom("born_again-db.xlsx", "bodydata", listOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()), binding.EditBodyWeight.text.toString()))
             binding.EditBodyWeight.isEnabled = false
@@ -105,7 +104,7 @@ class Progress : AppCompatActivity() {
         }
     }
 
-    fun setupBodyWeightChangeChart(lineChart: LineChart, doubleValues: List<Double>, xLabels: List<String>) {
+    private fun setupBodyWeightChangeChart(lineChart: LineChart, doubleValues: List<Double>, xLabels: List<String>) {
         if (doubleValues.size != xLabels.size) {
             throw IllegalArgumentException("xLabels must have the same length as doubleValues")
         }
@@ -116,7 +115,7 @@ class Progress : AppCompatActivity() {
             Entry(index.toFloat(), value.toFloat())
         }
 
-        val dataSet = LineDataSet(entries, "Double Values").apply {
+        val dataSet = LineDataSet(entries, "Weight (kg)").apply {
             color = Color.rgb(30, 144, 255)
             fillColor = Color.argb(50, 30, 144, 255)
             setDrawFilled(true)
@@ -158,7 +157,7 @@ class Progress : AppCompatActivity() {
         lineChart.invalidate()
     }
 
-    fun setupWeightLiftedChart(barChart: BarChart, doubleValues: List<Double>, xLabels: List<String>) {
+    private fun setupWeightLiftedChart(barChart: BarChart, doubleValues: List<Double>, xLabels: List<String>) {
         if (doubleValues.size != xLabels.size) {
             throw IllegalArgumentException("xLabels must have the same length as doubleValues")
         }
@@ -172,7 +171,7 @@ class Progress : AppCompatActivity() {
         }
 
         // Create a BarDataSet to define the bars' appearance and data
-        val dataSet = BarDataSet(entries, "Double Values").apply {
+        val dataSet = BarDataSet(entries, "Calories (kcal)").apply {
             // Set bar color (dark blue for visibility)
             color = Color.rgb(30, 144, 255)
             // Set bar value text color

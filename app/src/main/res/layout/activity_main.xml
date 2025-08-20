@@ -168,7 +168,6 @@
                 android:layout_gravity="center"/>
         </androidx.cardview.widget.CardView>
     </androidx.constraintlayout.widget.ConstraintLayout>
-
     <androidx.cardview.widget.CardView
         android:id="@+id/ScanContainer"
         android:layout_width="match_parent"
@@ -436,6 +435,19 @@
                 app:iconGravity="top"
                 android:backgroundTint="@color/blue"
                 android:layout_gravity="center"
+                android:padding="0sp"
+                android:layout_weight="1"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/CardioButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="Cardio"
+                app:icon="@drawable/cardioicon"
+                app:iconPadding="0sp"
+                app:iconGravity="top"
+                app:iconSize="24sp"
+                android:backgroundTint="@color/blue"
+                android:layout_gravity="end"
                 android:padding="0sp"
                 android:layout_weight="1"/>
             <com.google.android.material.button.MaterialButton

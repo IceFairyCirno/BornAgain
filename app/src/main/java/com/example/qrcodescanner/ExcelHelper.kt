@@ -2,7 +2,12 @@ package com.example.qrcodescanner
 
 import android.content.Context
 import android.util.Log
+import org.apache.poi.ss.usermodel.Cell
 import org.apache.poi.ss.usermodel.CellType
+import org.apache.poi.ss.usermodel.DateUtil
+import org.apache.poi.ss.usermodel.Row
+import org.apache.poi.ss.usermodel.Sheet
+import org.apache.poi.ss.usermodel.Workbook
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import org.apache.poi.ss.util.CellReference
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
@@ -10,6 +15,8 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class ExcelHelper(private val context: Context) {
     companion object {
@@ -205,7 +212,7 @@ class ExcelHelper(private val context: Context) {
                     return ""
                 }
 
-                val cellReference = org.apache.poi.ss.util.CellReference(cell)
+                val cellReference = CellReference(cell)
                 val row = sheet.getRow(cellReference.row)
                 val cellValue = row?.getCell(cellReference.col.toInt())?.toString() ?: ""
 
@@ -233,7 +240,7 @@ class ExcelHelper(private val context: Context) {
             }
 
             val sheet = workbook.getSheet(sheetName) ?: workbook.createSheet(sheetName)
-            val cellReference = org.apache.poi.ss.util.CellReference(cell)
+            val cellReference = CellReference(cell)
             val row = sheet.getRow(cellReference.row) ?: sheet.createRow(cellReference.row)
             val targetCell = row.createCell(cellReference.col.toInt())
             targetCell.setCellValue(value)
@@ -289,9 +296,9 @@ class ExcelHelper(private val context: Context) {
                             if (srcCell != null) {
                                 val newCell = newRow.createCell(j)
                                 when (srcCell.cellType) {
-                                    org.apache.poi.ss.usermodel.CellType.NUMERIC -> newCell.setCellValue(srcCell.numericCellValue)
-                                    org.apache.poi.ss.usermodel.CellType.STRING -> newCell.setCellValue(srcCell.stringCellValue)
-                                    org.apache.poi.ss.usermodel.CellType.BOOLEAN -> newCell.setCellValue(srcCell.booleanCellValue)
+                                    CellType.NUMERIC -> newCell.setCellValue(srcCell.numericCellValue)
+                                    CellType.STRING -> newCell.setCellValue(srcCell.stringCellValue)
+                                    CellType.BOOLEAN -> newCell.setCellValue(srcCell.booleanCellValue)
                                     else -> newCell.setCellValue(srcCell.toString())
                                 }
                             }
@@ -338,7 +345,7 @@ class ExcelHelper(private val context: Context) {
                     val rowData = mutableListOf<String>()
                     row.forEach { cell ->
                         rowData.add(when (cell.cellType) {
-                            org.apache.poi.ss.usermodel.CellType.NUMERIC -> cell.numericCellValue.toInt().toString()
+                            CellType.NUMERIC -> cell.numericCellValue.toInt().toString()
                             else -> cell.toString()
                         })
                     }
@@ -464,6 +471,205 @@ class ExcelHelper(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error processing file $filename: ${e.message}", e)
             return emptyList()
+        }
+    }
+
+    fun getLastCellWithContentAsString(filename: String, sheetName: String): String {
+        val fileInputStream = context.openFileInput(filename)
+        val workbook: Workbook = XSSFWorkbook(fileInputStream)
+        val sheet: Sheet = workbook.getSheet(sheetName) ?: return "0.0"
+
+        // Iterate from the last row to the first row
+        for (rowIndex in sheet.lastRowNum downTo 0) {
+            val row: Row? = sheet.getRow(rowIndex)
+            if (row != null) {
+                // Iterate through the cells of the row from last to first
+                for (cellIndex in row.lastCellNum - 1 downTo 0) {
+                    val cell: Cell? = row.getCell(cellIndex)
+                    if (cell != null && cell.cellType != CellType.BLANK) {
+                        // Convert cell content to String
+                        return when (cell.cellType) {
+                            CellType.STRING -> cell.stringCellValue
+                            CellType.NUMERIC -> cell.numericCellValue.toString()
+                            CellType.BOOLEAN -> cell.booleanCellValue.toString()
+                            CellType.FORMULA -> cell.cellFormula
+                            else -> "0.0"
+                        }
+                    }
+                }
+            }
+        }
+
+        workbook.close()
+        fileInputStream.close()
+        return "0.0"
+    }
+
+    fun getLastNUniqueFirstColumnTimeDifferences(filename: String, sheetName: String, n: Int): List<Double> {
+        Log.d(TAG, "Processing file: $filename, sheet: $sheetName, n: $n")
+        val differences = mutableListOf<Double>()
+
+        try {
+            // Access internal storage
+            val file = context.getFileStreamPath(filename)
+            if (!file.exists()) {
+                Log.e(TAG, "File not found: $filename")
+                return differences
+            }
+            Log.d(TAG, "File found: $filename")
+
+            FileInputStream(file).use { fis ->
+                // Open workbook
+                val workbook = WorkbookFactory.create(fis)
+                val sheet = workbook.getSheet(sheetName)
+                if (sheet == null) {
+                    Log.e(TAG, "Sheet not found: $sheetName")
+                    return differences
+                }
+                Log.d(TAG, "Sheet found: $sheetName")
+
+                // Handle empty sheet
+                if (sheet.lastRowNum < 0) {
+                    Log.w(TAG, "Sheet is empty (no rows)")
+                    return differences
+                }
+
+                // Collect last n unique values in first column
+                val uniqueValues = mutableListOf<String>()
+                val seenValues = mutableSetOf<String>()
+                for (rowNum in sheet.lastRowNum downTo 0) {
+                    val row = sheet.getRow(rowNum) ?: continue
+                    val firstCell = row.getCell(0) ?: continue
+                    val firstValue = when (firstCell.cellType) {
+                        CellType.STRING -> firstCell.stringCellValue
+                        CellType.NUMERIC -> firstCell.numericCellValue.toString()
+                        CellType.BOOLEAN -> firstCell.booleanCellValue.toString()
+                        CellType.FORMULA -> firstCell.cachedFormulaResultType.let { cachedType ->
+                            when (cachedType) {
+                                CellType.STRING -> firstCell.stringCellValue
+                                CellType.NUMERIC -> firstCell.numericCellValue.toString()
+                                CellType.BOOLEAN -> firstCell.booleanCellValue.toString()
+                                else -> firstCell.toString()
+                            }
+                        }
+                        else -> firstCell.toString()
+                    }
+                    if (firstValue.isNotEmpty() && seenValues.add(firstValue)) {
+                        uniqueValues.add(firstValue)
+                        Log.d(TAG, "Found unique first column value: '$firstValue' at row $rowNum")
+                    }
+                    if (uniqueValues.size >= n) break
+                }
+                Log.d(TAG, "Found ${uniqueValues.size} unique values: $uniqueValues")
+
+                // For each unique value, find first and last row, get last non-blank cell, and calculate time difference
+                val timeFormat = SimpleDateFormat("HH:mm", Locale.US).apply { isLenient = false }
+                for (uniqueValue in uniqueValues) {
+                    var firstRow: Row? = null
+                    var lastRow: Row? = null
+                    var firstRowNum = -1
+                    var lastRowNum = -1
+
+                    // Find first and last row with the unique value in first column
+                    for (rowNum in 0..sheet.lastRowNum) {
+                        val row = sheet.getRow(rowNum) ?: continue
+                        val firstCell = row.getCell(0) ?: continue
+                        val firstValue = when (firstCell.cellType) {
+                            CellType.STRING -> firstCell.stringCellValue
+                            CellType.NUMERIC -> firstCell.numericCellValue.toString()
+                            CellType.BOOLEAN -> firstCell.booleanCellValue.toString()
+                            CellType.FORMULA -> firstCell.cachedFormulaResultType.let { cachedType ->
+                                when (cachedType) {
+                                    CellType.STRING -> firstCell.stringCellValue
+                                    CellType.NUMERIC -> firstCell.numericCellValue.toString()
+                                    CellType.BOOLEAN -> firstCell.booleanCellValue.toString()
+                                    else -> firstCell.toString()
+                                }
+                            }
+                            else -> firstCell.toString()
+                        }
+                        if (firstValue == uniqueValue) {
+                            if (firstRow == null) {
+                                firstRow = row
+                                firstRowNum = rowNum
+                            }
+                            lastRow = row
+                            lastRowNum = rowNum
+                        }
+                    }
+
+                    if (firstRow == null || lastRow == null) {
+                        Log.w(TAG, "Could not find rows for value: '$uniqueValue'")
+                        differences.add(0.0)
+                        continue
+                    }
+                    Log.d(TAG, "Value '$uniqueValue': first row $firstRowNum, last row $lastRowNum")
+
+                    // Get last non-blank cell with content for first and last row
+                    fun getLastNonBlankCell(row: Row): String? {
+                        for (colNum in (row.lastCellNum - 1) downTo 0) {
+                            val cell = row.getCell(colNum) ?: continue
+                            if (cell.cellType != CellType.BLANK) {
+                                val value = when (cell.cellType) {
+                                    CellType.STRING -> cell.stringCellValue
+                                    CellType.NUMERIC -> if (DateUtil.isCellDateFormatted(cell)) cell.dateCellValue.toString() else cell.numericCellValue.toString()
+                                    CellType.BOOLEAN -> cell.booleanCellValue.toString()
+                                    CellType.FORMULA -> cell.cachedFormulaResultType.let { cachedType ->
+                                        when (cachedType) {
+                                            CellType.STRING -> cell.stringCellValue
+                                            CellType.NUMERIC -> cell.numericCellValue.toString()
+                                            CellType.BOOLEAN -> cell.booleanCellValue.toString()
+                                            else -> cell.toString()
+                                        }
+                                    }
+                                    CellType.ERROR -> cell.errorCellValue.toString()
+                                    else -> cell.toString()
+                                }
+                                if (value.isNotEmpty()) {
+                                    Log.d(TAG, "Found non-blank cell at column ${colNum} in row ${row.rowNum}: '$value'")
+                                    return value
+                                }
+                                Log.d(TAG, "Skipping empty cell at column $colNum in row ${row.rowNum}")
+                            } else {
+                                Log.d(TAG, "Skipping blank cell at column $colNum in row ${row.rowNum}")
+                            }
+                        }
+                        Log.w(TAG, "No non-blank cells with content in row ${row.rowNum}")
+                        return null
+                    }
+
+                    val firstRowLastValue = getLastNonBlankCell(firstRow)
+                    val lastRowLastValue = getLastNonBlankCell(lastRow)
+
+                    if (firstRowLastValue == null || lastRowLastValue == null) {
+                        Log.w(TAG, "No valid last cell for value '$uniqueValue' (first: $firstRowLastValue, last: $lastRowLastValue)")
+                        differences.add(0.0)
+                        continue
+                    }
+
+                    // Calculate time difference if both values are in HH:mm format
+                    try {
+                        val firstTime = timeFormat.parse(firstRowLastValue)?.time ?: throw IllegalArgumentException("Invalid first time format")
+                        val lastTime = timeFormat.parse(lastRowLastValue)?.time ?: throw IllegalArgumentException("Invalid last time format")
+                        val diffMs = lastTime - firstTime
+                        val diffHours = diffMs / (1000.0 * 60 * 60)
+                        Log.d(TAG, "Time difference for '$uniqueValue': $lastRowLastValue - $firstRowLastValue = $diffHours hours")
+                        differences.add(diffHours)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Invalid time format for '$uniqueValue' (first: $firstRowLastValue, last: $lastRowLastValue), setting difference to 0.0")
+                        differences.add(0.0)
+                    }
+                }
+
+                Log.d(TAG, "Returning time differences: $differences")
+                return differences
+            }
+        } catch (e: IOException) {
+            Log.e(TAG, "IO Exception while reading file: ${e.message}", e)
+            return differences
+        } catch (e: Exception) {
+            Log.e(TAG, "Unexpected error: ${e.message}", e)
+            return differences
         }
     }
 }

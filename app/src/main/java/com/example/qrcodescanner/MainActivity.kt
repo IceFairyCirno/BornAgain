@@ -5,12 +5,13 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.View
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.qrcodescanner.databinding.ActivityMainBinding
@@ -74,6 +75,27 @@ class MainActivity : AppCompatActivity() {
         week[getTodayWeekday()].setCardBackgroundColor(ContextCompat.getColor(this, R.color.blue))
         val weektext = week[getTodayWeekday()].getChildAt(0) as? TextView
         weektext?.setTextColor(android.graphics.Color.WHITE)
+
+        binding.CardioButton.setOnClickListener {
+            val builder = AlertDialog.Builder(this)
+            builder.setTitle("Cardio")
+            builder.setMessage("Enter your calories burned:")
+
+            // Add an edit text for user input
+            val input = EditText(this)
+            input.width = 10
+            builder.setView(input)
+
+            builder.setPositiveButton("Submit") { dialog, which ->
+                val userInput = input.text.toString()
+                Toast.makeText(this, "Saved Calories Burned: $userInput", Toast.LENGTH_SHORT).show()
+            }
+            builder.setNegativeButton("Cancel") { dialog, which ->
+                dialog.dismiss()
+            }
+
+            builder.show()
+        }
     }
 
     private fun requestRequiredPermissions() {
@@ -143,7 +165,7 @@ class MainActivity : AppCompatActivity() {
     }
     private fun getRecents(): MutableList<List<String>>{
         val recentRecords = excelHelper.processExcelFile("born_again-db.xlsx", "record")
-        var recordList: MutableList<List<String>> = mutableListOf()
+        val recordList: MutableList<List<String>> = mutableListOf()
         for (record in recentRecords) {
             recordList.add(listOf(
                 getPassedDate(record[0]),
