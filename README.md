@@ -2,6 +2,8 @@
 
 > This isn't the final version yet, but functional for daily record.
 
+![Just Cirno](https://i.imgur.com/Of8A6Ss.gif)
+
 Developed just for myself, posting it just to show off my shitty skills.
 
 Feel free to give comments through my website, and don't complain about the UI design. I am not a UI/UX designer.
