@@ -1,8 +1,6 @@
 ## Native Android App for Fitness Record
 
-> This isn't the final version yet, but functional for daily record.
-
-![Just Cirno](https://i.imgur.com/Of8A6Ss.gif)
+> This isn't the final version yet, but functional for daily records.
 
 Developed just for myself, posting it just to show off my shitty skills.
 
@@ -20,4 +18,6 @@ Download the app-release.apk and install it on your Android device.
 
 ## Author
 Ling Chun Ho Dicky
+
+![Just Cirno](https://i.imgur.com/Of8A6Ss.gif)
 
