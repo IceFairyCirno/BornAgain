@@ -4,7 +4,7 @@
 
 Developed just for myself, posting it just to show off my shitty skills.
 
-Feel free to give comments through my website, and don't complain about the UI design. I am not a UI/UX designer.
+Feel free to give comments through [my website](https://icefairycirno.github.io/My-Website/), and don't complain about the UI design. I am not a UI/UX designer.
 
 Functions are 70% Vibe-Coded, Layouts are 5% Vibe-Coded.
 
