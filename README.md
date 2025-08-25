@@ -12,9 +12,9 @@ Functions are 70% Vibe-Coded, Layouts are 5% Vibe-Coded.
 
 ## How to use
 
-> Updated 15/8/2025
+> Updated 25/8/2025
 
-Download the app-release.apk and install it on your Android device.
+Download the app-release-25082025.apk and install it on your Android device.
 
 ## Author
 Ling Chun Ho Dicky
