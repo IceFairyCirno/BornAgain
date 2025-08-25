@@ -5,8 +5,11 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.text.Editable
 import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.SearchView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -14,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.qrcodescanner.databinding.ActivityMainBinding
 import com.journeyapps.barcodescanner.CaptureActivity
 import com.journeyapps.barcodescanner.ScanContract
@@ -21,10 +25,15 @@ import com.journeyapps.barcodescanner.ScanOptions
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import android.text.TextWatcher
+import android.widget.AdapterView
+import androidx.core.view.isVisible
 
 class MainActivity : AppCompatActivity() {
     private lateinit var excelHelper: ExcelHelper
     private lateinit var binding: ActivityMainBinding
+
+    private lateinit var dropdownAdapter: ArrayAdapter<String>
 
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -46,6 +55,8 @@ class MainActivity : AppCompatActivity() {
 
         requestRequiredPermissions()
         excelHelper.initExcel("born_again-db.xlsx")
+
+        val items = excelHelper.getUniqueColumnValuesWithLogging("born_again-db.xlsx", "record", 2)
 
         binding.ScanButton.setOnClickListener {
             val options = ScanOptions()
@@ -71,31 +82,79 @@ class MainActivity : AppCompatActivity() {
 
         setupRecentExercise()
 
-        val week = listOf(binding.SundayContainer, binding.MondayContainer, binding.TuesdayContainer, binding.WednesdayContainer, binding.ThursdayContainer, binding.FridayContainer, binding.SaturdayContainer,)
+        val week = listOf(
+            binding.SundayContainer,
+            binding.MondayContainer,
+            binding.TuesdayContainer,
+            binding.WednesdayContainer,
+            binding.ThursdayContainer,
+            binding.FridayContainer,
+            binding.SaturdayContainer
+        )
         week[getTodayWeekday()].setCardBackgroundColor(ContextCompat.getColor(this, R.color.blue))
         val weektext = week[getTodayWeekday()].getChildAt(0) as? TextView
         weektext?.setTextColor(android.graphics.Color.WHITE)
 
-        binding.CardioButton.setOnClickListener {
-            val builder = AlertDialog.Builder(this)
-            builder.setTitle("Cardio")
-            builder.setMessage("Enter your calories burned:")
+        dropdownAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, mutableListOf())
+        binding.dropdownList.adapter = dropdownAdapter
 
-            // Add an edit text for user input
-            val input = EditText(this)
-            input.width = 10
-            builder.setView(input)
-
-            builder.setPositiveButton("Submit") { dialog, which ->
-                val userInput = input.text.toString()
-                Toast.makeText(this, "Saved Calories Burned: $userInput", Toast.LENGTH_SHORT).show()
-            }
-            builder.setNegativeButton("Cancel") { dialog, which ->
-                dialog.dismiss()
-            }
-
-            builder.show()
+        binding.searchBar.setOnClickListener {
+            binding.dropdownList.visibility = View.VISIBLE
+            updateDropdown(items)
         }
+
+        binding.searchBar.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                filterItems(s.toString(), items)
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        binding.dropdownList.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
+            val selectedItem = dropdownAdapter.getItem(position)
+            binding.searchBar.setText(selectedItem)
+            binding.dropdownList.visibility = View.GONE
+        }
+
+        binding.searchBar.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus && binding.dropdownList.isVisible) {
+                binding.dropdownList.visibility = View.GONE
+            }
+        }
+
+        binding.SearchButton.setOnClickListener{
+            val et_text = binding.searchBar.text.toString()
+            if (et_text in items){
+                val intent = Intent(this, MainActivity2::class.java).apply {
+                    putExtra("exerciseName", et_text)
+                }
+                startActivity(intent)
+                finish()
+            } else{
+                showMsg("Invalid Machine")
+            }
+        }
+    }
+
+    private fun showMsg(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun filterItems(query: String, items: List<String>) {
+        val filteredItems = if (query.isEmpty()) {
+            items
+        } else {
+            items.filter { it.contains(query, ignoreCase = true) }
+        }
+        updateDropdown(filteredItems)
+    }
+
+    private fun updateDropdown(filteredItems: List<String>) {
+        dropdownAdapter.clear()
+        dropdownAdapter.addAll(filteredItems)
+        dropdownAdapter.notifyDataSetChanged()
+        binding.dropdownList.visibility = if (filteredItems.isEmpty()) View.GONE else View.VISIBLE
     }
 
     private fun requestRequiredPermissions() {

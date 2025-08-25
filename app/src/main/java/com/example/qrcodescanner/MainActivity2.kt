@@ -298,16 +298,20 @@ class MainActivity2 : AppCompatActivity() {
 
     private fun setupCompeleteSetButton(formattedName: String){
         binding.SetConfirmButton.setOnClickListener {
-            startTimer(excelHelper.getCellExcel("born_again-db.xlsx", "settings", "A1").toLong()) { newTime -> currentTime = newTime }
-            val toTempSaveRow = listOf(
-                getCurrentDateFormatted(),
-                formattedName,
-                binding.WeightDisplay.text.toString(),
-                binding.RepsDisplay.text.toString().toInt().toString(),
-                getCurrentTimeInHHMM()
-            )
-            tempSaveData(toTempSaveRow)
-            renewCompletedSet()
+            if (binding.RepsDisplay.text.toString().toInt() == 0){
+                showMsg("You can't have 0 reps")
+            } else{
+                startTimer(excelHelper.getCellExcel("born_again-db.xlsx", "settings", "A1").toLong()) { newTime -> currentTime = newTime }
+                val toTempSaveRow = listOf(
+                    getCurrentDateFormatted(),
+                    formattedName,
+                    binding.WeightDisplay.text.toString(),
+                    binding.RepsDisplay.text.toString().toInt().toString(),
+                    getCurrentTimeInHHMM()
+                )
+                tempSaveData(toTempSaveRow)
+                renewCompletedSet()
+            }
         }
     }
 

@@ -4,7 +4,11 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.example.qrcodescanner.databinding.ActivityProgressBinding
 import com.github.mikephil.charting.animation.Easing
@@ -42,22 +46,63 @@ class Progress : AppCompatActivity() {
         val dates = convertDateList(getElementsAtIndex(bodydata, 0))
         val weights = getElementsAtIndex(bodydata, 1).map { it.toDouble() }
 
-        val datesForCalories = convertDateList(excelHelper.searchUniqueFromBottomExcel("born_again-db.xlsx", "record", 1, 7).mapNotNull { it.firstOrNull() }.reversed())
         val calories : MutableList<Double> = mutableListOf()
-        val durations = excelHelper.getLastNUniqueFirstColumnTimeDifferences("born_again-db.xlsx", "record", 7)
+        val lastDateTime = excelHelper.processExcelTimesWithKeys("born_again-db.xlsx", "record", 7)
+        val dates_calories = lastDateTime.first
+        val durations = lastDateTime.second
         val met = excelHelper.getCellExcel("born_again-db.xlsx", "settings", "C1").toDouble()
         val latestBodyWeights = excelHelper.getLastCellWithContentAsString("born_again-db.xlsx", "bodydata").toDouble()
-        for (duration in durations) {
-            val cal = met * latestBodyWeights * duration
-            calories.add(String.format("%.2f", cal).toDouble())
+        for (i in durations.indices) {
+            val col6 = excelHelper.getLastRowCol6Value("born_again-db.xlsx", "record", dates_calories[i])
+            if (col6 != "null"){
+                val col6Double = col6?.toDoubleOrNull()
+                calories.add(String.format("%.2f", col6Double).toDouble())
+            } else{
+                val cal = met * latestBodyWeights * durations[i]
+                excelHelper.updateLastRowValueIfEmpty("born_again-db.xlsx", "record", dates_calories[i], cal)
+                calories.add(String.format("%.2f", cal).toDouble())
+            }
+        }
+
+        var input : String = "0"
+
+        binding.EnterYourCardioButton.setOnClickListener {
+            val editText = EditText(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+
+                )
+            }
+
+            val container = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(50, 40, 50, 10)
+                addView(TextView(this@Progress).apply { text = "Your Cardio Today:" })
+                addView(editText)
+            }
+
+            AlertDialog.Builder(this)
+                .setView(container)
+                .setPositiveButton("OK") { _, _ ->
+                    excelHelper.updateLastRowValueAddIfNotEmpty("born_again-db.xlsx", "record", getTodayDate(), editText.text.toString().toDouble())
+                }
+                .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+                .show()
         }
 
         setupBodyWeightChangeChart(binding.Chart, weights, dates)
-        setupWeightLiftedChart(binding.Chart2, calories.reversed(), datesForCalories)
+        setupWeightLiftedChart(binding.Chart2, calories.reversed(), convertDateList(dates_calories).reversed())
         setupEditBodyWeight(bodydata)
 
         setupHomeButton()
         setupSaveButton()
+    }
+
+    fun getTodayDate(): String {
+        val today = LocalDate.now()
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        return today.format(formatter)
     }
 
     private fun getElementsAtIndex(lists: List<List<String>>, index: Int): List<String> {

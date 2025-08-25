@@ -505,171 +505,332 @@ class ExcelHelper(private val context: Context) {
         return "0.0"
     }
 
-    fun getLastNUniqueFirstColumnTimeDifferences(filename: String, sheetName: String, n: Int): List<Double> {
-        Log.d(TAG, "Processing file: $filename, sheet: $sheetName, n: $n")
-        val differences = mutableListOf<Double>()
+    fun processExcelTimesWithKeys(filename: String, sheetName: String, n: Int): Pair<List<String>, List<Double>> {
+        val TAG = "ExcelTimeProcessor"
+        val keys = mutableListOf<String>()
+        val results = mutableListOf<Double>()
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.US)
 
-        try {
-            // Access internal storage
-            val file = context.getFileStreamPath(filename)
-            if (!file.exists()) {
-                Log.e(TAG, "File not found: $filename")
-                return differences
+        Log.d(TAG, "Opening file: $filename, sheet: $sheetName")
+
+        FileInputStream(File(context.filesDir, filename)).use { fis ->
+            val workbook = XSSFWorkbook(fis)
+            val sheet = workbook.getSheet(sheetName)
+            if (sheet == null) {
+                Log.e(TAG, "Sheet '$sheetName' not found in $filename")
+                return Pair(emptyList(), emptyList())
             }
-            Log.d(TAG, "File found: $filename")
 
-            FileInputStream(file).use { fis ->
-                // Open workbook
-                val workbook = WorkbookFactory.create(fis)
-                val sheet = workbook.getSheet(sheetName)
-                if (sheet == null) {
-                    Log.e(TAG, "Sheet not found: $sheetName")
-                    return differences
+            Log.d(TAG, "Sheet '$sheetName' found. Reading first column values.")
+
+            val col1Values = mutableListOf<String>()
+            for (row in sheet) {
+                val cellVal = row.getCell(0)?.toString()?.trim()
+                if (!cellVal.isNullOrEmpty()) {
+                    col1Values.add(cellVal)
                 }
-                Log.d(TAG, "Sheet found: $sheetName")
-
-                // Handle empty sheet
-                if (sheet.lastRowNum < 0) {
-                    Log.w(TAG, "Sheet is empty (no rows)")
-                    return differences
-                }
-
-                // Collect last n unique values in first column
-                val uniqueValues = mutableListOf<String>()
-                val seenValues = mutableSetOf<String>()
-                for (rowNum in sheet.lastRowNum downTo 0) {
-                    val row = sheet.getRow(rowNum) ?: continue
-                    val firstCell = row.getCell(0) ?: continue
-                    val firstValue = when (firstCell.cellType) {
-                        CellType.STRING -> firstCell.stringCellValue
-                        CellType.NUMERIC -> firstCell.numericCellValue.toString()
-                        CellType.BOOLEAN -> firstCell.booleanCellValue.toString()
-                        CellType.FORMULA -> firstCell.cachedFormulaResultType.let { cachedType ->
-                            when (cachedType) {
-                                CellType.STRING -> firstCell.stringCellValue
-                                CellType.NUMERIC -> firstCell.numericCellValue.toString()
-                                CellType.BOOLEAN -> firstCell.booleanCellValue.toString()
-                                else -> firstCell.toString()
-                            }
-                        }
-                        else -> firstCell.toString()
-                    }
-                    if (firstValue.isNotEmpty() && seenValues.add(firstValue)) {
-                        uniqueValues.add(firstValue)
-                        Log.d(TAG, "Found unique first column value: '$firstValue' at row $rowNum")
-                    }
-                    if (uniqueValues.size >= n) break
-                }
-                Log.d(TAG, "Found ${uniqueValues.size} unique values: $uniqueValues")
-
-                // For each unique value, find first and last row, get last non-blank cell, and calculate time difference
-                val timeFormat = SimpleDateFormat("HH:mm", Locale.US).apply { isLenient = false }
-                for (uniqueValue in uniqueValues) {
-                    var firstRow: Row? = null
-                    var lastRow: Row? = null
-                    var firstRowNum = -1
-                    var lastRowNum = -1
-
-                    // Find first and last row with the unique value in first column
-                    for (rowNum in 0..sheet.lastRowNum) {
-                        val row = sheet.getRow(rowNum) ?: continue
-                        val firstCell = row.getCell(0) ?: continue
-                        val firstValue = when (firstCell.cellType) {
-                            CellType.STRING -> firstCell.stringCellValue
-                            CellType.NUMERIC -> firstCell.numericCellValue.toString()
-                            CellType.BOOLEAN -> firstCell.booleanCellValue.toString()
-                            CellType.FORMULA -> firstCell.cachedFormulaResultType.let { cachedType ->
-                                when (cachedType) {
-                                    CellType.STRING -> firstCell.stringCellValue
-                                    CellType.NUMERIC -> firstCell.numericCellValue.toString()
-                                    CellType.BOOLEAN -> firstCell.booleanCellValue.toString()
-                                    else -> firstCell.toString()
-                                }
-                            }
-                            else -> firstCell.toString()
-                        }
-                        if (firstValue == uniqueValue) {
-                            if (firstRow == null) {
-                                firstRow = row
-                                firstRowNum = rowNum
-                            }
-                            lastRow = row
-                            lastRowNum = rowNum
-                        }
-                    }
-
-                    if (firstRow == null || lastRow == null) {
-                        Log.w(TAG, "Could not find rows for value: '$uniqueValue'")
-                        differences.add(0.0)
-                        continue
-                    }
-                    Log.d(TAG, "Value '$uniqueValue': first row $firstRowNum, last row $lastRowNum")
-
-                    // Get last non-blank cell with content for first and last row
-                    fun getLastNonBlankCell(row: Row): String? {
-                        for (colNum in (row.lastCellNum - 1) downTo 0) {
-                            val cell = row.getCell(colNum) ?: continue
-                            if (cell.cellType != CellType.BLANK) {
-                                val value = when (cell.cellType) {
-                                    CellType.STRING -> cell.stringCellValue
-                                    CellType.NUMERIC -> if (DateUtil.isCellDateFormatted(cell)) cell.dateCellValue.toString() else cell.numericCellValue.toString()
-                                    CellType.BOOLEAN -> cell.booleanCellValue.toString()
-                                    CellType.FORMULA -> cell.cachedFormulaResultType.let { cachedType ->
-                                        when (cachedType) {
-                                            CellType.STRING -> cell.stringCellValue
-                                            CellType.NUMERIC -> cell.numericCellValue.toString()
-                                            CellType.BOOLEAN -> cell.booleanCellValue.toString()
-                                            else -> cell.toString()
-                                        }
-                                    }
-                                    CellType.ERROR -> cell.errorCellValue.toString()
-                                    else -> cell.toString()
-                                }
-                                if (value.isNotEmpty()) {
-                                    Log.d(TAG, "Found non-blank cell at column ${colNum} in row ${row.rowNum}: '$value'")
-                                    return value
-                                }
-                                Log.d(TAG, "Skipping empty cell at column $colNum in row ${row.rowNum}")
-                            } else {
-                                Log.d(TAG, "Skipping blank cell at column $colNum in row ${row.rowNum}")
-                            }
-                        }
-                        Log.w(TAG, "No non-blank cells with content in row ${row.rowNum}")
-                        return null
-                    }
-
-                    val firstRowLastValue = getLastNonBlankCell(firstRow)
-                    val lastRowLastValue = getLastNonBlankCell(lastRow)
-
-                    if (firstRowLastValue == null || lastRowLastValue == null) {
-                        Log.w(TAG, "No valid last cell for value '$uniqueValue' (first: $firstRowLastValue, last: $lastRowLastValue)")
-                        differences.add(0.0)
-                        continue
-                    }
-
-                    // Calculate time difference if both values are in HH:mm format
-                    try {
-                        val firstTime = timeFormat.parse(firstRowLastValue)?.time ?: throw IllegalArgumentException("Invalid first time format")
-                        val lastTime = timeFormat.parse(lastRowLastValue)?.time ?: throw IllegalArgumentException("Invalid last time format")
-                        val diffMs = lastTime - firstTime
-                        val diffHours = diffMs / (1000.0 * 60 * 60)
-                        Log.d(TAG, "Time difference for '$uniqueValue': $lastRowLastValue - $firstRowLastValue = $diffHours hours")
-                        differences.add(diffHours)
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Invalid time format for '$uniqueValue' (first: $firstRowLastValue, last: $lastRowLastValue), setting difference to 0.0")
-                        differences.add(0.0)
-                    }
-                }
-
-                Log.d(TAG, "Returning time differences: $differences")
-                return differences
             }
-        } catch (e: IOException) {
-            Log.e(TAG, "IO Exception while reading file: ${e.message}", e)
-            return differences
-        } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error: ${e.message}", e)
-            return differences
+
+            Log.d(TAG, "Total rows read: ${col1Values.size}")
+
+            // Get last n unique values in reverse order
+            val lastNUnique = col1Values.asReversed().distinct().take(n)
+            Log.d(TAG, "Last $n unique values in first column: $lastNUnique")
+
+            for (value in lastNUnique) {
+                val matchingRows = sheet.filter { row ->
+                    row.getCell(0)?.toString()?.trim() == value
+                }
+
+                if (matchingRows.isEmpty()) {
+                    Log.w(TAG, "No matching rows found for value '$value'")
+                    keys.add(value)
+                    results.add(0.0)
+                    continue
+                }
+
+                val firstRow = matchingRows.first()
+                val lastRow = matchingRows.last()
+
+                val firstTimeStr = firstRow.getCell(4)?.toString()?.trim() ?: ""
+                val lastTimeStr = lastRow.getCell(4)?.toString()?.trim() ?: ""
+
+                Log.d(TAG, "Processing value '$value': firstTime='$firstTimeStr', lastTime='$lastTimeStr'")
+
+                val diffHours = try {
+                    if (firstTimeStr.matches(Regex("^\\d{2}:\\d{2}$")) &&
+                        lastTimeStr.matches(Regex("^\\d{2}:\\d{2}$"))
+                    ) {
+                        val firstDate = timeFormat.parse(firstTimeStr)
+                        val lastDate = timeFormat.parse(lastTimeStr)
+                        if (firstDate != null && lastDate != null) {
+                            val diffMillis = lastDate.time - firstDate.time
+                            val diff = diffMillis / (1000.0 * 60.0 * 60.0)
+                            Log.d(TAG, "Time difference for '$value': $diff hours")
+                            diff
+                        } else {
+                            Log.w(TAG, "Failed to parse times for '$value'")
+                            0.0
+                        }
+                    } else {
+                        Log.w(TAG, "Time format mismatch for '$value': firstTime='$firstTimeStr', lastTime='$lastTimeStr'")
+                        0.0
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Exception parsing times for '$value': ${e.message}")
+                    0.0
+                }
+
+                keys.add(value)
+                results.add(diffHours)
+            }
+
+            workbook.close()
+        }
+        Log.d(TAG, "Processing complete. Keys: $keys, Results: $results")
+        return Pair(keys, results)
+    }
+
+    fun updateLastRowValueIfEmpty(
+        filename: String,
+        sheetName: String,
+        colValue: String,
+        result: Double
+    ) {
+        val TAG = "ExcelUpdater"
+
+        Log.d(TAG, "Opening file: $filename, sheet: $sheetName")
+
+        FileInputStream(File(context.filesDir, filename)).use { fis ->
+            val workbook = XSSFWorkbook(fis)
+            val sheet = workbook.getSheet(sheetName)
+            if (sheet == null) {
+                Log.e(TAG, "Sheet '$sheetName' not found in $filename")
+                workbook.close()
+                return
+            }
+
+            Log.d(TAG, "Searching for last row containing '$colValue' in column 1")
+
+            val lastMatchingRow = (sheet.lastRowNum downTo 0).mapNotNull { rowIndex -> sheet.getRow(rowIndex) }
+                .firstOrNull { row ->
+                    row.getCell(0)?.toString()?.trim() == colValue
+                }
+
+            if (lastMatchingRow == null) {
+                Log.w(TAG, "No row found with value '$colValue' in column 1")
+                workbook.close()
+                return
+            }
+
+            Log.d(TAG, "Last matching row number: ${lastMatchingRow.rowNum}")
+
+            val cell = lastMatchingRow.getCell(5) ?: lastMatchingRow.createCell(5)
+            val cellValueString = cell.toString()
+
+            if (cell.cellType == org.apache.poi.ss.usermodel.CellType.BLANK
+                || cellValueString.isEmpty()
+                || (cell.cellType == org.apache.poi.ss.usermodel.CellType.STRING && cellValueString.isBlank())
+            ) {
+                Log.d(TAG, "Cell at column 6 is empty. Writing result: $result")
+                cell.setCellValue(result)
+
+                FileOutputStream(File(context.filesDir, filename)).use { fos ->
+                    workbook.write(fos)
+                    Log.d(TAG, "Saved updates to file: $filename")
+                }
+            } else {
+                Log.d(TAG, "Cell at column 6 is not empty ('${cellValueString}'). No change made.")
+            }
+
+            workbook.close()
         }
     }
+    fun updateLastRowValueAddIfNotEmpty(
+        filename: String,
+        sheetName: String,
+        colValue: String,
+        result: Double
+    ) {
+        val TAG = "ExcelUpdater"
+
+        Log.d(TAG, "Opening file: $filename, sheet: $sheetName")
+
+        FileInputStream(File(context.filesDir, filename)).use { fis ->
+            val workbook = XSSFWorkbook(fis)
+            val sheet = workbook.getSheet(sheetName)
+            if (sheet == null) {
+                Log.e(TAG, "Sheet '$sheetName' not found in $filename")
+                workbook.close()
+                return
+            }
+
+            Log.d(TAG, "Searching for last row containing '$colValue' in column 1")
+
+            val lastMatchingRow = (sheet.lastRowNum downTo 0).mapNotNull { rowIndex -> sheet.getRow(rowIndex) }
+                .firstOrNull { row ->
+                    row.getCell(0)?.toString()?.trim() == colValue
+                }
+
+            if (lastMatchingRow == null) {
+                Log.w(TAG, "No row found with value '$colValue' in column 1")
+                workbook.close()
+                return
+            }
+
+            Log.d(TAG, "Last matching row number: ${lastMatchingRow.rowNum}")
+
+            val cell = lastMatchingRow.getCell(5) ?: lastMatchingRow.createCell(5)
+            val cellValueString = cell.toString()
+
+            if (cell.cellType == org.apache.poi.ss.usermodel.CellType.BLANK
+                || cellValueString.isEmpty()
+                || (cell.cellType == org.apache.poi.ss.usermodel.CellType.STRING && cellValueString.isBlank())
+            ) {
+                Log.d(TAG, "Cell at column 6 is empty. Writing result: $result")
+                cell.setCellValue(result)
+            } else {
+                val existingValue = try {
+                    cell.numericCellValue
+                } catch (e: Exception) {
+                    cellValueString.toDoubleOrNull() ?: run {
+                        Log.w(TAG, "Failed to parse cell value '$cellValueString' as double, defaulting to 0.0")
+                        0.0
+                    }
+                }
+                val newValue = existingValue + result
+                Log.d(TAG, "Cell at column 6 has existing value $existingValue. Adding $result = $newValue")
+                cell.setCellValue(newValue)
+            }
+
+            FileOutputStream(File(context.filesDir, filename)).use { fos ->
+                workbook.write(fos)
+                Log.d(TAG, "Saved updates to file: $filename")
+            }
+            workbook.close()
+        }
+    }
+
+    fun getLastRowCol6Value(
+        filename: String,
+        sheetName: String,
+        colValue: String
+    ): String? {
+        val TAG = "ExcelReader"
+
+        Log.d(TAG, "Opening file: $filename, sheet: $sheetName")
+
+        FileInputStream(File(context.filesDir, filename)).use { fis ->
+            val workbook = XSSFWorkbook(fis)
+            val sheet = workbook.getSheet(sheetName)
+            if (sheet == null) {
+                Log.e(TAG, "Sheet '$sheetName' not found in $filename")
+                workbook.close()
+                return null
+            }
+
+            Log.d(TAG, "Searching for last row containing '$colValue' in column 1")
+
+            val lastMatchingRow = (sheet.lastRowNum downTo 0).mapNotNull { sheet.getRow(it) }
+                .firstOrNull { row ->
+                    row.getCell(0)?.toString()?.trim() == colValue
+                }
+
+            if (lastMatchingRow == null) {
+                Log.w(TAG, "No row found with value '$colValue' in column 1")
+                workbook.close()
+                return null
+            }
+
+            Log.d(TAG, "Last matching row number: ${lastMatchingRow.rowNum}")
+
+            val cell = lastMatchingRow.getCell(5)  // column 6 index is 5
+            val cellValue = cell?.toString()?.takeIf { it.isNotBlank() }
+
+            Log.d(TAG, "Value in column 6: ${cellValue ?: "null"}")
+
+            workbook.close()
+            return cellValue ?: "null"
+        }
+    }
+
+    fun getUniqueColumnValuesWithLogging(filename: String, sheetName: String, colNum: Int): List<String> {
+        val TAG = "ExcelUniqueValues"
+        val uniqueValues = mutableSetOf<String>()
+
+        Log.d(TAG, "Opening file: $filename, sheet: $sheetName, column: $colNum")
+
+        val fileName = File(context.filesDir, filename)
+
+        FileInputStream(fileName).use { fis ->
+            val workbook = XSSFWorkbook(fis)
+            val sheet = workbook.getSheet(sheetName)
+            if (sheet == null) {
+                Log.e(TAG, "Sheet '$sheetName' not found in $filename")
+                workbook.close()
+                return emptyList()
+            }
+
+            Log.d(TAG, "Iterating rows from 0 to ${sheet.lastRowNum}")
+
+            for (rowIndex in 0..sheet.lastRowNum) {
+                val row = sheet.getRow(rowIndex)
+                if (row == null) {
+                    Log.w(TAG, "Row $rowIndex is null, skipping")
+                    continue
+                }
+
+                val cell = row.getCell(colNum - 1) // Adjust for 1-based colNum
+                if (cell == null) {
+                    Log.d(TAG, "Row $rowIndex, cell at column ${colNum} is null, skipping")
+                    continue
+                }
+
+                val cellValue = when (cell.cellType) {
+                    CellType.STRING -> cell.stringCellValue
+                    CellType.NUMERIC -> cell.numericCellValue.toString()
+                    CellType.BOOLEAN -> cell.booleanCellValue.toString()
+                    CellType.FORMULA -> {
+                        try {
+                            val evaluator = workbook.creationHelper.createFormulaEvaluator()
+                            val evaluatedCell = evaluator.evaluate(cell)
+                            when (evaluatedCell.cellType) {
+                                CellType.STRING -> evaluatedCell.stringValue
+                                CellType.NUMERIC -> evaluatedCell.numberValue.toString()
+                                CellType.BOOLEAN -> evaluatedCell.booleanValue.toString()
+                                else -> {
+                                    Log.w(TAG, "Row $rowIndex formula cell evaluated to unsupported type")
+                                    null
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error evaluating formula in row $rowIndex: ${e.message}")
+                            null
+                        }
+                    }
+                    else -> {
+                        Log.d(TAG, "Row $rowIndex, cell type ${cell.cellType} not handled")
+                        null
+                    }
+                }?.trim()
+
+                if (!cellValue.isNullOrEmpty()) {
+                    val added = uniqueValues.add(cellValue)
+                    if (added) {
+                        Log.d(TAG, "Added unique value: '$cellValue' from row $rowIndex")
+                    } else {
+                        Log.d(TAG, "Duplicate value encountered: '$cellValue' from row $rowIndex")
+                    }
+                } else {
+                    Log.d(TAG, "Empty or null cell value at row $rowIndex")
+                }
+            }
+
+            workbook.close()
+            Log.d(TAG, "Found total unique values: ${uniqueValues.size}")
+        }
+
+        return uniqueValues.toList()
+    }
+
 }
